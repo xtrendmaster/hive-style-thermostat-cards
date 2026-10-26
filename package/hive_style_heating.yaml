@@ -72,14 +72,14 @@ script:
           period: "{{ '%02d:%02d:00' % ((minutes | default(60) | int) // 60, (minutes | default(60) | int) % 60) }}"
           is_water: "{{ entity_id.startswith('water_heater.') }}"
           is_main: "{{ entity_id == 'climate.hive_thermostat' }}"
-          is_hive: "{{ entity_id.startswith('water_heater.') or 'boost' in (state_attr(entity_id, 'preset_modes') or []) }}"
+          is_hive: "{{ entity_id.startswith('water_heater.') or entity_id in integration_entities('hive') }}"
           boost_timer: "timer.boost_{{ entity_id.split('.')[1] }}"
           restore_scene: "scene.hive_boost_{{ entity_id.split('.')[1] }}"
           restore_scene_id: "hive_boost_{{ entity_id.split('.')[1] }}"
           boosting: >-
             {% if entity_id == 'climate.hive_thermostat' %}{{ is_state('binary_sensor.hive_thermostat_boost', 'on') }}
             {% elif entity_id == 'water_heater.hive_hot_water' %}{{ is_state('binary_sensor.hive_hot_water_boost', 'on') }}
-            {% elif 'boost' in (state_attr(entity_id, 'preset_modes') or []) %}{{ is_state_attr(entity_id, 'preset_mode', 'boost') }}
+            {% elif entity_id in integration_entities('hive') %}{{ is_state_attr(entity_id, 'preset_mode', 'boost') }}
             {% else %}{{ is_state('timer.boost_' ~ entity_id.split('.')[1], 'active') }}{% endif %}
       - choose:
           - alias: Hot water
