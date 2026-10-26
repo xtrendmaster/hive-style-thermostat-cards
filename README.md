@@ -68,6 +68,17 @@ Prefer YAML? Copy `package/hive_style_heating.yaml` to `/config/packages/` (with
 
 Don't use both: the setup page leaves scripts that come from a YAML package alone.
 
+## Zigbee2MQTT (local) - beta
+
+If your Hive receiver and thermostat are paired to **Zigbee2MQTT** instead of the Hive hub, pick your receiver as the main thermostat on the setup page and choose **Connected through: Zigbee2MQTT (local)**. Check the receiver's topic (e.g. `zigbee2mqtt/Hive Receiver`) and whether it's single channel (SLR1) or dual channel (SLR2).
+
+- **Boost** uses the receiver's own timed boost over MQTT. Home Assistant keeps a timer (`timer.boost_<receiver>`) so the dashboard knows a boost is running.
+- **When a boost is cancelled or runs out**, the receiver's boost is cleared and the heating is put back how it was before the boost, then the Home Assistant schedule is reapplied if it's on. (The receiver doesn't always restore the right target by itself.)
+- Heating on/off, the schedule and Manual / Schedule / Off work as normal.
+- **Not yet:** hot water over Zigbee2MQTT (choose *No hot water* for now), and dual-channel receivers are untested. Feedback welcome in Issues.
+
+Thanks to Matt for working out and testing the receiver's MQTT messages.
+
 ## Using the cards on their own
 
 ```yaml
@@ -115,6 +126,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.1**: Zigbee2MQTT (local) option on the setup page: Boost through the receiver's own timed boost, with a Home Assistant timer and clean-up so the heating is always put back afterwards.
 - **1.5.2**: setup page: choosing *No hot water* hides the hot water sensor questions.
 - **1.5.1**: heating-only homes (hot water set to *No hot water*): the setup page now leaves every hot water part out of the scripts, so there are no placeholder entities like `water_heater.none`. If no thermostat boost sensor is picked, boost is read from the thermostat itself. Already set up? Press *Update* with *Also replace heating scripts I made myself* ticked once. Thanks Matt.
 - **1.5.0**: hot water schedule in Home Assistant; Light / Dark / Auto appearance; valve battery card; the setup page checks for the Scheduler card and accepts UIX instead of card-mod. The setup page now leaves heating scripts you made yourself alone (tick *Also replace heating scripts I made myself* to update them; needed once if you set up with 1.4.x and want the hot water schedule).
