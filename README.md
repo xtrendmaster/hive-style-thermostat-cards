@@ -127,6 +127,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.3**: fully local Zigbee2MQTT setups (no Hive integration) no longer include any `hive.*` actions in the scripts, so Spook and the repairs list stay clean. Thanks Matt Sol.
 - **1.6.0-beta.2**: tap **Boost** to choose the temperature and how long (30 min to 3 hr), like the Hive app; hot water just asks how long. Your last choice is remembered. Tap **Boosting** to stop. Press and hold Boost for a quick 21° / 1 hr boost. Idea from Matt Sol.
 - **1.6.0-beta.1**: Zigbee2MQTT (local) option on the setup page: Boost through the receiver's own timed boost, with a Home Assistant timer and clean-up so the heating is always put back afterwards.
 - **1.5.2**: setup page: choosing *No hot water* hides the hot water sensor questions.
