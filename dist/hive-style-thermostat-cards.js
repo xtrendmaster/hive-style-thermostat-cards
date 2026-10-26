@@ -9,7 +9,7 @@
  *   write gate                 - batches temperature changes so Hive's servers don't block them
  *                                (buttons: tap_action fire-dom-event with hive_nudge / hive_set)
  */
-const HSTC_VERSION = '1.5.2';
+const HSTC_VERSION = '1.6.0-beta.1';
 console.info(`%c HIVE-STYLE-THERMOSTAT-CARDS %c v${HSTC_VERSION} `, 'background:#E8642E;color:#fff;font-weight:600', 'background:#4350E6;color:#fff');
 
 // Fonts used by the cards and the example dashboard (DM Serif Display + Inter, SIL OFL).
@@ -763,6 +763,18 @@ function hsBattery(hass, eid) {
 }
 const hsPlatform = (hass, eid) => (hass.entities && hass.entities[eid] && hass.entities[eid].platform) || '';
 
+function hsDeviceName(hass, eid) {
+  const e = hass.entities && hass.entities[eid];
+  const d = e && e.device_id && hass.devices && hass.devices[e.device_id];
+  return (d && (d.name_by_user || d.name)) || hsName(hass, eid);
+}
+const hsSameDevice = (hass, a, b) => { const x = hass.entities && hass.entities[a], y = hass.entities && hass.entities[b]; return !!(x && y && x.device_id && x.device_id === y.device_id); };
+const hsZ2MDefaults = (hass, main) => ({
+  backend: hsPlatform(hass, main) === 'mqtt' ? 'z2m' : 'hive',
+  z2mTopic: 'zigbee2mqtt/' + hsDeviceName(hass, main),
+  z2mCh: /_heat$/.test(main) ? '_heat' : '',
+});
+
 function hsDeviceEntities(hass, eid) {
   const e = hass.entities && hass.entities[eid];
   if (!e || !e.device_id) return [];
@@ -793,6 +805,7 @@ function hsGenerate(c, urlPath) {
   const d = JSON.parse(JSON.stringify(HS_DASHBOARD));
   const valves = c.valves || [];
   const timers = valves.filter((v) => !v.hive).map((v) => 'timer.boost_' + hsObj(v.entity));
+  if (c.backend === 'z2m') timers.push('timer.boost_' + hsObj(c.main));
   const have = { hot_water: !!c.water, hub: !!c.hub, battery: !!c.battery };
 
   const cloneFor = (tmpl, kind, v) => {
@@ -871,6 +884,8 @@ function hsGenerate(c, urlPath) {
   s = hsSplitAll(s, HS_T.main, c.main);
   s = hsSplitAll(s, HS_T.water, c.water || 'water_heater.none');
   s = hsSplitAll(s, '/hive-heating/', `/${urlPath}/`);
+  // no boost sensor: the cards read the boost from the timer (Zigbee2MQTT) or the thermostat itself
+  s = hsSplitAll(s, "?'binary_sensor.none':", "?'':");
   const out = JSON.parse(s);
   // drop placeholder entities (a part of Hive you don't have) from the cards' update lists
   const tidy = (o) => { if (Array.isArray(o)) o.forEach(tidy); else if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (k === 'triggers_update' && Array.isArray(o[k])) o[k] = o[k].filter((x) => !/\.none$/.test(x)); else tidy(o[k]); } };
@@ -889,7 +904,57 @@ function hsPackageFor(c) {
   if (!c.mainBoost) s = hsSplitAll(s, "is_state('binary_sensor.none', 'on')", "is_state_attr(entity_id, 'preset_mode', 'boost')");
   const p = JSON.parse(s);
   if (!c.water) hsStripWater(p);
+  if (c.backend === 'z2m') hsZ2M(p, c);
   return p;
+}
+
+// Zigbee2MQTT (local) receiver: Boost uses the receiver's own timed boost over MQTT. A Home Assistant
+// timer is the boost state, and when it's cancelled or runs out the receiver is put back how it was.
+// (Thanks to Matt for testing the MQTT messages on a real receiver.)
+function hsZ2M(p, c) {
+  const MARK = '(Managed by Hive-style heating setup.)';
+  const main = c.main, obj = hsObj(main);
+  const timer = 'timer.boost_' + obj, scene = 'scene.hive_boost_' + obj, sceneId = 'hive_boost_' + obj;
+  const topic = String(c.z2mTopic || '').trim().replace(/\/set$/, '').replace(/\/+$/, '');
+  const k = (n) => `'${n}${c.z2mCh || ''}'`;
+  p.script.hive_z2m_end_boost = {
+    alias: 'Hive - end Zigbee2MQTT receiver boost',
+    description: `Cancels the receiver's own timed boost, then puts the heating back: the settings from before the boost, then the Home Assistant schedule if it's on. ${MARK}`,
+    icon: 'mdi:bullseye', mode: 'single',
+    sequence: [
+      { action: 'timer.cancel', target: { entity_id: timer } },
+      { action: 'mqtt.publish', data: { topic: topic + '/set', payload: `{{ {${k('temperature_setpoint_hold')}: false, ${k('system_mode')}: 'auto'} | to_json }}` } },
+      { delay: { seconds: 1 } },
+      { if: [{ condition: 'template', value_template: `{{ '${scene}' in (states.scene | map(attribute='entity_id') | list) }}` }],
+        then: [{ action: 'scene.turn_on', target: { entity_id: scene } }] },
+      { if: [{ condition: 'state', entity_id: 'input_boolean.hive_ha_schedule', state: 'on' }],
+        then: [{ action: 'script.hive_apply_schedule_now' }] },
+    ],
+  };
+  const b = p.script.hive_boost;
+  const v = b.sequence[0].variables;
+  v.is_z2m = `{{ entity_id == '${main}' }}`;
+  v.boosting = v.boosting.replace(new RegExp(`^(\\{% if entity_id == '${main.replace(/\./g, '\\.')}' %\\})\\{\\{[^}]*\\}\\}`), `$1{{ is_state('${timer}', 'active') }}`);
+  const ch = b.sequence[1].choose;
+  ch.unshift(
+    { alias: 'Zigbee2MQTT receiver boosting - cancel', conditions: '{{ is_z2m and boosting }}', sequence: [{ action: 'script.hive_z2m_end_boost' }] },
+    { alias: 'Zigbee2MQTT receiver - start boost', conditions: '{{ is_z2m }}', sequence: [
+      { if: [{ condition: 'state', entity_id: main, state: 'auto' }],
+        then: [{ action: 'scene.delete', target: { entity_id: scene }, continue_on_error: true }],
+        else: [{ action: 'scene.create', data: { scene_id: sceneId, snapshot_entities: [main] } }] },
+      { action: 'mqtt.publish', data: { topic: topic + '/set',
+        payload: `{{ {${k('system_mode')}: 'emergency_heating', ${k('temperature_setpoint_hold_duration')}: (minutes | default(60) | int), ${k('temperature_setpoint_hold')}: true, ${k('occupied_heating_setpoint')}: temp} | to_json }}` } },
+      { action: 'timer.start', target: { entity_id: timer }, data: { duration: '{{ period }}' } },
+    ] });
+  // the valve clean-up automation must leave the receiver's timer to its own automation
+  for (const a of p.automation) if (a.id === 'hive_style_end_valve_boost') a.conditions = [...(a.conditions || []), `{{ trigger.event.data.entity_id != '${timer}' }}`];
+  p.automation.push({
+    id: 'hive_style_end_z2m_boost', alias: 'Hive-style - end Zigbee2MQTT receiver boost',
+    description: `When the receiver's boost timer runs out, cancel the receiver's own boost and put the heating back. ${MARK}`,
+    mode: 'single',
+    triggers: [{ trigger: 'event', event_type: 'timer.finished', event_data: { entity_id: timer } }],
+    actions: [{ action: 'script.hive_z2m_end_boost' }],
+  });
 }
 
 // Heating-only homes: leave every hot water part out of the scripts (no placeholder entities)
@@ -960,10 +1025,12 @@ class HiveSetupCard extends HTMLElement {
         return { entity: e, name: sv ? sv.name : hsName(h, e), on: savedValves ? !!sv : guess };
       }),
       det: hsDetect(h, main, water),
+      ...hsZ2MDefaults(h, main),
       log: [], busy: false, done: false,
       // scripts already there (an earlier setup, or your own): leave them alone unless you untick this
       replaceOwn: false,
     };
+    if (saved && saved.backend) Object.assign(this._s, { backend: saved.backend, z2mTopic: saved.z2mTopic || this._s.z2mTopic, z2mCh: saved.z2mCh || '' });
     if (saved) Object.assign(this._s.det, { mainBoost: saved.mainBoost || this._s.det.mainBoost, waterBoost: saved.waterBoost || this._s.det.waterBoost, waterState: saved.waterState || this._s.det.waterState, hub: saved.hub || '', battery: saved.battery || '' });
     this._render();
   }
@@ -995,7 +1062,8 @@ class HiveSetupCard extends HTMLElement {
     const checks = this._checks();
     const bins = Object.keys(h.states).filter((e) => e.startsWith('binary_sensor.'));
     const sens = Object.keys(h.states).filter((e) => e.startsWith('sensor.'));
-    const valves = s.valves.filter((v) => v.entity !== s.main);
+    const z2m = s.backend === 'z2m';
+    const valves = s.valves.filter((v) => v.entity !== s.main && !(z2m && hsSameDevice(h, v.entity, s.main)));
     this.shadowRoot.innerHTML = `<style>${this._css()}</style>
 <div class="wrap">
   <div class="head"><div class="title">Heating setup</div>
@@ -1010,6 +1078,12 @@ class HiveSetupCard extends HTMLElement {
     <div class="h">Main thermostat</div>
     <div class="note">The thermostat that switches your boiler on.</div>
     <select id="main">${this._opt(s.climates, s.main)}</select>
+    <div class="lab">Connected through</div>
+    <select id="backend"><option value="hive" ${z2m ? '' : 'selected'}>Hive hub (Hive integration)</option><option value="z2m" ${z2m ? 'selected' : ''}>Zigbee2MQTT (local) - beta</option></select>
+    ${z2m ? `<div class="lab">Receiver's Zigbee2MQTT topic</div><input id="z2mTopic" class="v-name" value="${hsEsc(s.z2mTopic)}">
+    <div class="lab">Receiver</div>
+    <select id="z2mCh"><option value="" ${s.z2mCh ? '' : 'selected'}>Single channel, heating only (SLR1)</option><option value="_heat" ${s.z2mCh ? 'selected' : ''}>Dual channel, heating + hot water (SLR2) - not tested yet</option></select>
+    <div class="note">Boost uses the receiver's own timed boost. Home Assistant keeps a timer and puts the heating back when the boost ends. Hot water over Zigbee2MQTT isn't supported yet: choose "No hot water".</div>` : ''}
     <div class="h">Hot water</div>
     <div class="note">Heating only? Choose "No hot water" and the hot water pages and settings are left out.</div>
     <select id="water">${this._opt(s.waters, s.water, 'No hot water')}</select>
@@ -1045,7 +1119,10 @@ class HiveSetupCard extends HTMLElement {
     : `<div class="btn ${s.busy ? 'busy' : ''}" id="create">${s.busy ? 'Setting up…' : (s.saved ? 'Update my heating dashboard' : 'Create my heating dashboard')}</div>`}
 </div>`;
     const $ = (id) => this.shadowRoot.getElementById(id);
-    $('main').onchange = (e) => { s.main = e.target.value; s.det = hsDetect(h, s.main, s.water); this._render(); };
+    $('main').onchange = (e) => { s.main = e.target.value; s.det = hsDetect(h, s.main, s.water); Object.assign(s, hsZ2MDefaults(h, s.main)); this._render(); };
+    $('backend').onchange = (e) => { s.backend = e.target.value; this._render(); };
+    if ($('z2mTopic')) $('z2mTopic').oninput = (e) => { s.z2mTopic = e.target.value; };
+    if ($('z2mCh')) $('z2mCh').onchange = (e) => { s.z2mCh = e.target.value; };
     $('water').onchange = (e) => { s.water = e.target.value; s.det = hsDetect(h, s.main, s.water); this._render(); };
     ['mainBoost', 'waterBoost', 'waterState', 'battery', 'hub'].forEach((k) => { const el = $(k); if (el) el.onchange = (e) => { s.det[k] = e.target.value; }; });
     $('replaceOwn').onchange = (e) => { s.replaceOwn = e.target.checked; };
@@ -1071,14 +1148,17 @@ class HiveSetupCard extends HTMLElement {
     s.busy = true; s.log = []; this._render();
     const log = (cls, msg) => { s.log.push([cls, msg]); this._render(); };
     const used = new Set();
-    const valves = s.valves.filter((v) => v.on && v.entity !== s.main).map((v) => {
+    const z2m = s.backend === 'z2m';
+    if (z2m && !/^[^#+]+$/.test(String(s.z2mTopic || '').trim())) { s.log = [['err', "Enter the receiver's Zigbee2MQTT topic, e.g. zigbee2mqtt/Hive Receiver"]]; this._render(); return; }
+    const valves = s.valves.filter((v) => v.on && v.entity !== s.main && !(z2m && hsSameDevice(h, v.entity, s.main))).map((v) => {
       let slug = hsSlug(v.name || hsObj(v.entity));
       if (['home', 'thermostat', 'hot-water', 'schedule', 'schedule-edit', 'water-schedule', 'insights', 'manage', 'setup', 'thermostat-picker'].includes(slug)) slug += '-room';
       while (used.has(slug)) slug += '-2';
       used.add(slug);
       return { entity: v.entity, name: (v.name || hsName(h, v.entity)).trim(), slug, hive: hsIsHiveValve(h, v.entity), battery: hsBattery(h, v.entity) };
     });
-    const c = { version: HSTC_VERSION, main: s.main, water: s.water || '', valves, ...s.det };
+    const c = { version: HSTC_VERSION, main: s.main, water: s.water || '', valves, ...s.det, backend: z2m ? 'z2m' : 'hive' };
+    if (z2m) Object.assign(c, { z2mTopic: String(s.z2mTopic).trim(), z2mCh: s.z2mCh || '', mainBoost: '', hub: '' });
     const pkg = hsPackageFor(c);
     try {
       const MARK = '(Managed by Hive-style heating setup.)';
@@ -1097,7 +1177,9 @@ class HiveSetupCard extends HTMLElement {
         log('ok', `✓ Created setting: ${cfg.name}`);
       }
       // 2. Boost timers for valves without Hive's own boost
-      for (const v of valves.filter((x) => !x.hive)) {
+      const timerFor = valves.filter((x) => !x.hive).map((x) => ({ entity: x.entity, name: x.name }));
+      if (z2m) timerFor.unshift({ entity: c.main, name: 'heating' });
+      for (const v of timerFor) {
         const id = 'boost_' + hsObj(v.entity);
         if (h.states['timer.' + id]) { log('ok', `✓ Boost timer for ${v.name}: already there`); continue; }
         const t = { name: id, icon: 'mdi:bullseye', duration: '01:00:00', restore: true };
