@@ -18,6 +18,7 @@ A clean, phone-first heating dashboard for Home Assistant, inspired by the look 
 - **Hold-to-scroll temperature wheel** (`custom:hive-temp-picker`): the selected number glows and the colour changes as you scroll.
 - **Heating schedule in Home Assistant** (`custom:hive-schedule-card`): a Hive-style day view with an editor. Tap a slot to change start, end and temperature, add or delete periods, or copy a day to other days. It works with the [Scheduler component](https://github.com/nielsfaber/scheduler-component).
 - **Advance to next** slot, like the app.
+- **Boost like the Hive app**: tap Boost, pick the temperature and how long.
 - **Boost for any radiator valve**: Hive valves use Hive's own boost; other valves (Sonoff, Aqara, Tuya…) get a Home Assistant boost that puts them back how they were when it ends.
 - **Hot water** page with boost and On / Schedule / Off, and its own **hot water schedule** run by Home Assistant (same editor, On/Off slots).
 - **Light, dark or automatic** appearance, switchable on the Manage page.
@@ -77,7 +78,7 @@ If your Hive receiver and thermostat are paired to **Zigbee2MQTT** instead of th
 - Heating on/off, the schedule and Manual / Schedule / Off work as normal.
 - **Not yet:** hot water over Zigbee2MQTT (choose *No hot water* for now), and dual-channel receivers are untested. Feedback welcome in Issues.
 
-Thanks to Matt for working out and testing the receiver's MQTT messages.
+Thanks to Matt Sol for working out and testing the receiver's MQTT messages.
 
 ## Using the cards on their own
 
@@ -126,6 +127,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.2**: tap **Boost** to choose the temperature and how long (30 min to 3 hr), like the Hive app; hot water just asks how long. Your last choice is remembered. Tap **Boosting** to stop. Press and hold Boost for a quick 21° / 1 hr boost. Idea from Matt Sol.
 - **1.6.0-beta.1**: Zigbee2MQTT (local) option on the setup page: Boost through the receiver's own timed boost, with a Home Assistant timer and clean-up so the heating is always put back afterwards.
 - **1.5.2**: setup page: choosing *No hot water* hides the hot water sensor questions.
 - **1.5.1**: heating-only homes (hot water set to *No hot water*): the setup page now leaves every hot water part out of the scripts, so there are no placeholder entities like `water_heater.none`. If no thermostat boost sensor is picked, boost is read from the thermostat itself. Already set up? Press *Update* with *Also replace heating scripts I made myself* ticked once. Thanks Matt.
