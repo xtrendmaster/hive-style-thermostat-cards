@@ -131,6 +131,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.5**: radiator valves with their own *boost* preset (Tuya, Moes, Sonoff…) were mistaken for Hive valves and Boost failed with "hive.boost_heating_on not found". Only valves from the Hive integration are treated as Hive now; the others get a Home Assistant boost. The setup page is also better at picking the main thermostat (it skips radiator valves and hot tubs). Already set up? Press *Update* on the setup page with *Also replace heating scripts I made myself* ticked.
 - **1.6.0-beta.4**: works with **any thermostat** in Home Assistant, not just Hive: on the setup page choose *Connected through: Another thermostat*. Boost sets the temperature you pick, and a Home Assistant timer puts the thermostat back how it was when the boost ends. *Schedule* on a thermostat without an auto mode now falls back to heat instead of failing.
 - **1.6.0-beta.3**: fully local Zigbee2MQTT setups (no Hive integration) no longer include any `hive.*` actions in the scripts, so Spook and the repairs list stay clean. Thanks Matt Sol.
 - **1.6.0-beta.2**: tap **Boost** to choose the temperature and how long (30 min to 3 hr), like the Hive app; hot water just asks how long. Your last choice is remembered. Tap **Boosting** to stop. Press and hold Boost for a quick 21° / 1 hr boost. Idea from Matt Sol.
