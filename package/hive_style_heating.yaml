@@ -266,7 +266,7 @@ script:
             target:
               entity_id: "{{ entity_id }}"
             data:
-              hvac_mode: "{{ {'manual': 'heat', 'schedule': 'auto', 'off': 'off'}[mode] }}"
+              hvac_mode: "{% set m = {'manual': 'heat', 'schedule': 'auto', 'off': 'off'}[mode] %}{{ m if m in (state_attr(entity_id, 'hvac_modes') or [m]) else 'heat' }}"
 
   hive_apply_schedule_now:
     alias: Hive - apply current schedule slot now
