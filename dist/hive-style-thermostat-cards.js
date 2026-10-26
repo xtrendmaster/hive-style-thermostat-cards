@@ -10,7 +10,7 @@
  *   boost sheet                - tap Boost to pick temperature and how long (fire-dom-event hive_boost)
  *                                (buttons: tap_action fire-dom-event with hive_nudge / hive_set)
  */
-const HSTC_VERSION = '1.6.0-beta.2';
+const HSTC_VERSION = '1.6.0-beta.3';
 console.info(`%c HIVE-STYLE-THERMOSTAT-CARDS %c v${HSTC_VERSION} `, 'background:#E8642E;color:#fff;font-weight:600', 'background:#4350E6;color:#fff');
 
 // Fonts used by the cards and the example dashboard (DM Serif Display + Inter, SIL OFL).
@@ -1020,7 +1020,22 @@ function hsPackageFor(c) {
   const p = JSON.parse(s);
   if (!c.water) hsStripWater(p);
   if (c.backend === 'z2m') hsZ2M(p, c);
+  if (c.backend === 'z2m' && !(c.valves || []).some((v) => v.hive)) hsStripHiveIntegration(p);
   return p;
+}
+
+// Fully local (no Hive integration): leave out every step that calls a hive.* action,
+// so tools like Spook don't flag actions that don't exist on this system.
+function hsStripHiveIntegration(p) {
+  const usesHive = (o) => /"action":"hive\./.test(JSON.stringify(o));
+  for (const sc of Object.values(p.script)) {
+    for (const step of sc.sequence || []) {
+      if (!step.choose) continue;
+      step.choose = step.choose.filter((b) => !usesHive(b));
+      if (step.default && usesHive(step.default)) delete step.default;
+    }
+    if (sc.description) sc.description = sc.description.replace(/Hive thermostat and hot water use[\s\S]*?TRVs\)\. /, '');
+  }
 }
 
 // Zigbee2MQTT (local) receiver: Boost uses the receiver's own timed boost over MQTT. A Home Assistant
