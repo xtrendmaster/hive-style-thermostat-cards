@@ -69,6 +69,10 @@ Prefer YAML? Copy `package/hive_style_heating.yaml` to `/config/packages/` (with
 
 Don't use both: the setup page leaves scripts that come from a YAML package alone.
 
+## Not using Hive?
+
+The dashboard should work with any thermostat and radiator valves Home Assistant can set a temperature on (e.g. Netatmo, Tado, Nest, Sonoff, Aqara, Tuya, `generic_thermostat`). It's tested with Hive and a standard Home Assistant thermostat; tell me in Issues how yours gets on. On the setup page pick your thermostat and choose **Connected through: Another thermostat**. Temperature, the schedule, Manual / Schedule / Off, Boost and the charts all work. Hot water currently needs Hive's hot water.
+
 ## Zigbee2MQTT (local) - beta
 
 If your Hive receiver and thermostat are paired to **Zigbee2MQTT** instead of the Hive hub, pick your receiver as the main thermostat on the setup page and choose **Connected through: Zigbee2MQTT (local)**. Check the receiver's topic (e.g. `zigbee2mqtt/Hive Receiver`) and whether it's single channel (SLR1) or dual channel (SLR2).
@@ -127,6 +131,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.4**: works with **any thermostat** in Home Assistant, not just Hive: on the setup page choose *Connected through: Another thermostat*. Boost sets the temperature you pick, and a Home Assistant timer puts the thermostat back how it was when the boost ends. *Schedule* on a thermostat without an auto mode now falls back to heat instead of failing.
 - **1.6.0-beta.3**: fully local Zigbee2MQTT setups (no Hive integration) no longer include any `hive.*` actions in the scripts, so Spook and the repairs list stay clean. Thanks Matt Sol.
 - **1.6.0-beta.2**: tap **Boost** to choose the temperature and how long (30 min to 3 hr), like the Hive app; hot water just asks how long. Your last choice is remembered. Tap **Boosting** to stop. Press and hold Boost for a quick 21° / 1 hr boost. Idea from Matt Sol.
 - **1.6.0-beta.1**: Zigbee2MQTT (local) option on the setup page: Boost through the receiver's own timed boost, with a Home Assistant timer and clean-up so the heating is always put back afterwards.
