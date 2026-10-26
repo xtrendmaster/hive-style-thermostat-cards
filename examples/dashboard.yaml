@@ -1,4 +1,4 @@
-# Hive-style thermostat cards - example dashboard (v1.5)
+# Hive-style thermostat cards - example dashboard (v1.6)
 # Easiest: use the setup page instead (add the card "Hive-style heating setup" to an empty dashboard).
 # Manual: Settings > Dashboards > Add dashboard > "New dashboard from scratch", URL: hive-heating,
 # then ... > Edit > Raw configuration editor > paste this file and replace the example entity IDs
@@ -118,16 +118,21 @@ button_card_templates:
       - color: '#FFFFFF'
       - padding-top: 8px
     tap_action:
-      action: perform-action
-      data:
-        entity_id: entity
-      perform_action: script.hive_boost
+      action: fire-dom-event
+      hive_boost:
+        entity_id: '[[[ return entity.entity_id ]]]'
+      haptic: light
     template: hive_clear
     triggers_update:
     - binary_sensor.hive_thermostat_boost
     - binary_sensor.hive_hot_water_boost
     - timer.boost_study_radiator
     extra_styles: 'ha-card, ha-card::before, ha-card::after { background: none !important; background-color: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; } #ripple, ha-ripple, mwc-ripple { display: none !important; } ha-card::before, ha-card::after { content: none !important; display: none !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: none !important; box-shadow: none !important; } :host { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; }'
+    hold_action:
+      action: perform-action
+      perform_action: script.hive_boost
+      data:
+        entity_id: entity
   hive_boost_pill:
     icon: mdi:bullseye
     layout: icon_name
@@ -152,15 +157,20 @@ button_card_templates:
       - font-size: 17px
       - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''#4350E6''; ]]]'
     tap_action:
-      action: perform-action
-      data:
-        entity_id: entity
-      perform_action: script.hive_boost
+      action: fire-dom-event
+      hive_boost:
+        entity_id: '[[[ return entity.entity_id ]]]'
+      haptic: light
     template: hive_clear
     triggers_update:
     - binary_sensor.hive_thermostat_boost
     - binary_sensor.hive_hot_water_boost
     - timer.boost_study_radiator
+    hold_action:
+      action: perform-action
+      perform_action: script.hive_boost
+      data:
+        entity_id: entity
   hive_clear:
     hold_action:
       action: none
