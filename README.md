@@ -119,6 +119,8 @@ edit_path: /hive-heating/schedule-edit
 - Radiators **without** a smart valve heat up as normal, because nothing tells them to stay closed (a normal TRV only shuts once its room is already warm). For real room-by-room control, fit smart valves to the rooms you use most first; the rest can come later.
 - Most systems have a bypass valve or a towel rail without a TRV, so the boiler always has somewhere to send the water when nearly every valve is closed. If you're not sure about yours, ask a heating engineer when you fit smart valves.
 
+**Rooms on Schedule follow the heating schedule.** Tap **Schedule** on a radiator and that room follows the main heating schedule: when the schedule goes to 21°, the room goes to 21°; at an "off" slot (7°) it goes down too. It needs the heating schedule in Home Assistant (the main thermostat on Schedule). Change a room's temperature by hand and it keeps your change until the next schedule slot, like Hive. Rooms that are boosting or off are left alone, and a room catches up with the schedule when its boost ends. **Manual** or **Off** stops the room following. Without a Home Assistant schedule, Schedule uses the valve's own schedule as before. Separate schedules for each room are planned.
+
 ## Good to know
 
 - **"Off" in a schedule is 7°**, Hive's frost setting, so the boiler still protects the house.
@@ -131,6 +133,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.0-beta.8**: **Rooms on Schedule follow the heating schedule.** Tapping Schedule on a radiator used to hand it to the valve's own schedule, which most people never set, so the room sat at a fixed temperature. Now the room follows the main heating schedule. Press **Update** on the setup page to add it (it creates a switch per radiator). Thanks Matt Sol for spotting it.
 - **1.6.0-beta.7**: Zigbee2MQTT receivers: cancelling or ending a boost could leave the receiver at 1 °C when it had been in Auto. The boost now always takes a snapshot first, restores it, and checks again a few seconds later in case the receiver drops to 1 °C late. Thanks Matt Sol.
 - **1.6.0-beta.6**: **Boost all radiators too**: a switch in the main thermostat's Boost pop-up that also boosts every smart radiator valve to the same temperature for the same time (Hive valves are boosted a few seconds apart so Hive doesn't block them). Stopping the main boost stops those radiators too; rooms you boosted on their own are left alone. The pop-up now shows the names from your dashboard. Idea from Matt Sol.
 - **1.6.0-beta.5**: radiator valves with their own *boost* preset (Tuya, Moes, Sonoff…) were mistaken for Hive valves and Boost failed with "hive.boost_heating_on not found". Only valves from the Hive integration are treated as Hive now; the others get a Home Assistant boost. The setup page is also better at picking the main thermostat (it skips radiator valves and hot tubs). Already set up? Press *Update* on the setup page with *Also replace heating scripts I made myself* ticked.
