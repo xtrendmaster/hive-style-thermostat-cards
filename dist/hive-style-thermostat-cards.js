@@ -10,7 +10,7 @@
  *   boost sheet                - tap Boost to pick temperature and how long (fire-dom-event hive_boost)
  *                                (buttons: tap_action fire-dom-event with hive_nudge / hive_set)
  */
-const HSTC_VERSION = '1.6.0-beta.6';
+const HSTC_VERSION = '1.6.0-beta.7';
 console.info(`%c HIVE-STYLE-THERMOSTAT-CARDS %c v${HSTC_VERSION} `, 'background:#E8642E;color:#fff;font-weight:600', 'background:#4350E6;color:#fff');
 
 // Fonts used by the cards and the example dashboard (DM Serif Display + Inter, SIL OFL).
@@ -1130,8 +1130,12 @@ function hsZ2M(p, c) {
     sequence: [
       { action: 'timer.cancel', target: { entity_id: timer } },
       { action: 'mqtt.publish', data: { topic: topic + '/set', payload: `{{ {${k('temperature_setpoint_hold')}: false, ${k('system_mode')}: 'auto'} | to_json }}` } },
-      { delay: { seconds: 1 } },
+      { delay: { seconds: 3 } },
       { if: [{ condition: 'template', value_template: `{{ '${scene}' in (states.scene | map(attribute='entity_id') | list) }}` }],
+        then: [{ action: 'scene.turn_on', target: { entity_id: scene } }] },
+      // some receivers come out of boost late with a silly target (e.g. 1 degC): check again and put it right
+      { delay: { seconds: 6 } },
+      { if: [{ condition: 'template', value_template: `{{ '${scene}' in (states.scene | map(attribute='entity_id') | list) and (state_attr('${main}', 'temperature') | float(0)) < 5 }}` }],
         then: [{ action: 'scene.turn_on', target: { entity_id: scene } }] },
       { if: [{ condition: 'state', entity_id: 'input_boolean.hive_ha_schedule', state: 'on' }],
         then: [{ action: 'script.hive_apply_schedule_now' }] },
@@ -1145,9 +1149,7 @@ function hsZ2M(p, c) {
   ch.unshift(
     { alias: 'Zigbee2MQTT receiver boosting - cancel', conditions: '{{ is_z2m and boosting }}', sequence: [{ action: 'script.hive_z2m_end_boost' }] },
     { alias: 'Zigbee2MQTT receiver - start boost', conditions: '{{ is_z2m }}', sequence: [
-      { if: [{ condition: 'state', entity_id: main, state: 'auto' }],
-        then: [{ action: 'scene.delete', target: { entity_id: scene }, continue_on_error: true }],
-        else: [{ action: 'scene.create', data: { scene_id: sceneId, snapshot_entities: [main] } }] },
+      { action: 'scene.create', data: { scene_id: sceneId, snapshot_entities: [main] } },
       { action: 'mqtt.publish', data: { topic: topic + '/set',
         payload: `{{ {${k('system_mode')}: 'emergency_heating', ${k('temperature_setpoint_hold_duration')}: (minutes | default(60) | int), ${k('temperature_setpoint_hold')}: true, ${k('occupied_heating_setpoint')}: temp} | to_json }}` } },
       { action: 'timer.start', target: { entity_id: timer }, data: { duration: '{{ period }}' } },
