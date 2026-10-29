@@ -121,6 +121,7 @@ button_card_templates:
       action: fire-dom-event
       hive_boost:
         entity_id: '[[[ return entity.entity_id ]]]'
+        name: '[[[ return (variables && variables.name) || '''' ]]]'
       haptic: light
     template: hive_clear
     triggers_update:
@@ -160,6 +161,7 @@ button_card_templates:
       action: fire-dom-event
       hive_boost:
         entity_id: '[[[ return entity.entity_id ]]]'
+        name: '[[[ return (variables && variables.name) || '''' ]]]'
       haptic: light
     template: hive_clear
     triggers_update:
