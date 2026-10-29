@@ -379,14 +379,14 @@ button_card_templates:
       card:
       - height: 34px
       - border-radius: 20px
-      - background: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':(st===''off''?''off'':((st===''auto''||st===''eco''||(st===''heat''&&ha&&entity.entity_id===''climate.hive_thermostat''))?''schedule'':''manual'')); return mode===variables.m?''#4350E6 !important'':''transparent !important''; ]]]'
+      - background: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':(st===''off''?''off'':((st===''auto''||st===''eco''||(st===''heat''&&((ha&&entity.entity_id===''climate.hive_thermostat'')||((states[''input_boolean.hive_room_schedule_''+entity.entity_id.split(''.'')[1]]||{}).state===''on''))))?''schedule'':''manual'')); return mode===variables.m?''#4350E6 !important'':''transparent !important''; ]]]'
       - backdrop-filter: none !important
       - -webkit-backdrop-filter: none !important
       - box-shadow: none !important
       - border: none !important
       name:
       - font-size: 16px
-      - color: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':(st===''off''?''off'':((st===''auto''||st===''eco''||(st===''heat''&&ha&&entity.entity_id===''climate.hive_thermostat''))?''schedule'':''manual'')); return mode===variables.m?''#FFFFFF'':''var(--hs-text,#2F2F33)''; ]]]'
+      - color: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':(st===''off''?''off'':((st===''auto''||st===''eco''||(st===''heat''&&((ha&&entity.entity_id===''climate.hive_thermostat'')||((states[''input_boolean.hive_room_schedule_''+entity.entity_id.split(''.'')[1]]||{}).state===''on''))))?''schedule'':''manual'')); return mode===variables.m?''#FFFFFF'':''var(--hs-text,#2F2F33)''; ]]]'
     template: hive_clear
     triggers_update:
     - input_boolean.hive_ha_schedule
