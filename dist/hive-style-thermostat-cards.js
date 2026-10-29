@@ -10,7 +10,7 @@
  *   boost sheet                - tap Boost to pick temperature and how long (fire-dom-event hive_boost)
  *                                (buttons: tap_action fire-dom-event with hive_nudge / hive_set)
  */
-const HSTC_VERSION = '1.6.0-beta.8';
+const HSTC_VERSION = '1.6.0';
 console.info(`%c HIVE-STYLE-THERMOSTAT-CARDS %c v${HSTC_VERSION} `, 'background:#E8642E;color:#fff;font-weight:600', 'background:#4350E6;color:#fff');
 
 // Fonts used by the cards and the example dashboard (DM Serif Display + Inter, SIL OFL).
