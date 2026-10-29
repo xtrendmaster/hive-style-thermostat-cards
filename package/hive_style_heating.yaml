@@ -12,6 +12,8 @@
 #   binary_sensor.hive_thermostat_boost  -> Hive "Boost" binary sensor (heating)
 #   binary_sensor.hive_hot_water_boost   -> Hive "Hotwater Boost" binary sensor
 #   timer.boost_study_radiator           -> one timer per NON-Hive valve: timer.boost_<valve object id>
+#   input_boolean.hive_room_schedule_study_radiator -> one per radiator: hive_room_schedule_<valve object id>
+#     (on = that room is on Schedule and follows the main heating schedule's temperature)
 
 input_boolean:
   hive_ha_schedule:
@@ -23,6 +25,10 @@ input_boolean:
   hive_ha_water_schedule:
     name: Home Assistant runs the hot water schedule
     icon: mdi:water-boiler-auto
+  # One per radiator: the room is on Schedule and follows the main heating schedule.
+  hive_room_schedule_study_radiator:
+    name: Study radiator follows the heating schedule
+    icon: mdi:calendar-sync
 
 input_select:
   hive_appearance:
@@ -162,6 +168,14 @@ script:
             data:
               time_period: "{{ period }}"
               temperature: "{{ temp }}"
+      - alias: Boost cancelled on a room that's on Schedule - catch up with the schedule
+        if: "{{ boosting and entity_id.startswith('climate.') and is_state('input_boolean.hive_room_schedule_' ~ entity_id.split('.')[1], 'on') }}"
+        then:
+          - delay:
+              seconds: 5
+          - action: script.hive_rooms_follow_schedule
+            data:
+              only: "{{ entity_id }}"
 
   hive_adjust_target:
     alias: Hive - nudge target temperature
@@ -201,6 +215,9 @@ script:
     description: >-
       For the main thermostat, Schedule hands control to the Home Assistant schedule once a
       schedule tagged hive_heating exists; otherwise it falls back to Hive's own schedule.
+      For a radiator, Schedule makes the room follow the main heating schedule's temperature
+      (input_boolean.hive_room_schedule_<valve>); without a Home Assistant schedule it uses the
+      valve's own schedule.
     icon: mdi:thermostat-cog
     mode: queued
     fields:
@@ -219,6 +236,7 @@ script:
     sequence:
       - variables:
           is_main: "{{ entity_id == 'climate.hive_thermostat' }}"
+          room_flag: "input_boolean.hive_room_schedule_{{ entity_id.split('.')[1] }}"
           ha_schedule_ready: >-
             {{ states.switch | selectattr('attributes.tags', 'defined')
                | selectattr('attributes.tags', 'contains', 'hive_heating') | list | count > 0 }}
@@ -256,12 +274,31 @@ script:
                 target:
                   entity_id: input_boolean.hive_ha_schedule
               - action: script.hive_apply_schedule_now
+          - alias: Radiator follows the Home Assistant heating schedule
+            conditions: "{{ not is_main and entity_id.startswith('climate.') and mode == 'schedule' and ha_schedule_ready and states(room_flag) in ['on', 'off'] }}"
+            sequence:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ room_flag }}"
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: "{{ entity_id }}"
+                data:
+                  hvac_mode: heat
+              - action: script.hive_rooms_follow_schedule
+                data:
+                  only: "{{ entity_id }}"
         default:
           - if: "{{ is_main }}"
             then:
               - action: input_boolean.turn_off
                 target:
                   entity_id: input_boolean.hive_ha_schedule
+          - if: "{{ not is_main and is_state(room_flag, 'on') }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: "{{ room_flag }}"
           - action: climate.set_hvac_mode
             target:
               entity_id: "{{ entity_id }}"
@@ -294,6 +331,68 @@ script:
         data:
           entity_id: "{{ sched }}"
           time: "{{ now().strftime('%H:%M:%S') }}"
+
+  hive_rooms_follow_schedule:
+    alias: Hive - rooms on Schedule follow the heating schedule
+    description: >-
+      Sets every radiator that's on Schedule (input_boolean.hive_room_schedule_<valve> on) to the main
+      thermostat's scheduled temperature. Runs when the schedule changes slot. Leaves alone rooms that
+      are off or boosting, and does nothing while the main thermostat is boosting or off the Home
+      Assistant schedule. A room you nudge keeps your change until the next schedule slot, like Hive.
+    icon: mdi:home-thermometer
+    mode: restart
+    fields:
+      only:
+        name: Only this radiator
+        description: Leave empty for every room on Schedule.
+        selector:
+          entity:
+            domain: climate
+    sequence:
+      - variables:
+          main: climate.hive_thermostat
+          target: "{{ state_attr(main, 'temperature') }}"
+          rooms: >-
+            {% set ns = namespace(r=[]) %}
+            {% for b in states.input_boolean | selectattr('state', 'eq', 'on') %}
+              {% if b.object_id.startswith('hive_room_schedule_') %}
+                {% set e = 'climate.' ~ b.object_id[19:] %}
+                {% set st = states[e] %}
+                {% if st and st.state not in ['off', 'unavailable', 'unknown'] and (not (only | default('')) or e == only)
+                      and st.attributes.preset_mode | default('') != 'boost'
+                      and not is_state('timer.boost_' ~ b.object_id[19:], 'active') %}
+                  {% set ns.r = ns.r + [e] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}{{ ns.r }}
+      - condition: state
+        entity_id: input_boolean.hive_ha_schedule
+        state: "on"
+      - condition: template
+        alias: Main thermostat on the schedule, not boosting, and no room is calling the boiler
+        value_template: >-
+          {{ is_number(target) and target | float(0) >= 5 and not is_state(main, 'off')
+             and not is_state('binary_sensor.hive_thermostat_boost','on')
+             and not is_state_attr(main, 'preset_mode', 'boost')
+             and not is_state('timer.boost_' ~ main.split('.')[1], 'active')
+             and not is_state('input_boolean.room_heat_call_active', 'on') }}
+      - repeat:
+          for_each: "{{ rooms }}"
+          sequence:
+            - variables:
+                t: >-
+                  {{ [[target | float, state_attr(repeat.item, 'min_temp') | float(5)] | max,
+                      state_attr(repeat.item, 'max_temp') | float(32)] | min }}
+            - if: "{{ (state_attr(repeat.item, 'temperature') | float(-1)) != t }}"
+              then:
+                - action: climate.set_temperature
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    temperature: "{{ t }}"
+                  continue_on_error: true
+                - delay:
+                    seconds: "{{ 4 if repeat.item in integration_entities('hive') else 0 }}"
 
   hive_apply_water_schedule_now:
     alias: Hive - apply current hot water slot now
@@ -347,6 +446,21 @@ script:
           time: "{{ (as_datetime(state_attr(sched, 'next_trigger')) + timedelta(minutes=1)).strftime('%H:%M:%S') }}"
 
 automation:
+  - id: hive_style_rooms_follow_schedule
+    alias: Hive-style - rooms on Schedule follow the heating schedule
+    description: When the main heating schedule changes temperature, rooms on Schedule follow it.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: climate.hive_thermostat
+        attribute: temperature
+        for: {seconds: 15}
+      - trigger: state
+        entity_id: input_boolean.hive_ha_schedule
+        to: "on"
+        for: {seconds: 15}
+    actions:
+      - action: script.hive_rooms_follow_schedule
   - id: hive_style_end_valve_boost
     alias: Hive-style - end Home Assistant boost on non-Hive valves
     description: When a timer.boost_* finishes, put that valve back to its pre-boost mode and temperature.
@@ -361,3 +475,10 @@ automation:
         target:
           entity_id: "scene.hive_boost_{{ trigger.event.data.entity_id.split('.')[1][6:] }}"
         continue_on_error: true
+      - if: "{{ is_state('input_boolean.hive_room_schedule_' ~ trigger.event.data.entity_id.split('.')[1][6:], 'on') }}"
+        then:
+          - delay:
+              seconds: 5
+          - action: script.hive_rooms_follow_schedule
+            data:
+              only: "climate.{{ trigger.event.data.entity_id.split('.')[1][6:] }}"
