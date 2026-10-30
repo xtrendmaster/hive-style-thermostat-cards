@@ -299,11 +299,20 @@ script:
               - action: input_boolean.turn_off
                 target:
                   entity_id: "{{ room_flag }}"
-          - action: climate.set_hvac_mode
-            target:
-              entity_id: "{{ entity_id }}"
-            data:
-              hvac_mode: "{% set m = {'manual': 'heat', 'schedule': 'auto', 'off': 'off'}[mode] %}{{ m if m in (state_attr(entity_id, 'hvac_modes') or [m]) else 'heat' }}"
+          - alias: Valve without an Off mode (e.g. Hive valve on Zigbee2MQTT) - Off sets frost protection
+            if: "{{ mode == 'off' and 'off' not in (state_attr(entity_id, 'hvac_modes') or ['off']) }}"
+            then:
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ entity_id }}"
+                data:
+                  temperature: "{{ state_attr(entity_id, 'min_temp') | float(5) }}"
+            else:
+              - action: climate.set_hvac_mode
+                target:
+                  entity_id: "{{ entity_id }}"
+                data:
+                  hvac_mode: "{% set m = {'manual': 'heat', 'schedule': 'auto', 'off': 'off'}[mode] %}{{ m if m in (state_attr(entity_id, 'hvac_modes') or [m]) else 'heat' }}"
 
   hive_apply_schedule_now:
     alias: Hive - apply current schedule slot now
@@ -335,10 +344,11 @@ script:
   hive_rooms_follow_schedule:
     alias: Hive - rooms on Schedule follow the heating schedule
     description: >-
-      Sets every radiator that's on Schedule (input_boolean.hive_room_schedule_<valve> on) to the main
-      thermostat's scheduled temperature. Runs when the schedule changes slot. Leaves alone rooms that
-      are off or boosting, and does nothing while the main thermostat is boosting or off the Home
-      Assistant schedule. A room you nudge keeps your change until the next schedule slot, like Hive.
+      Sets every radiator that's on Schedule (input_boolean.hive_room_schedule_<valve> on) to the
+      temperature of the current heating schedule slot (schedules tagged hive_heating). It reads the
+      schedule itself, so a boost on the main thermostat or rooms calling the boiler don't affect it.
+      Leaves alone rooms that are off or boosting. A room you nudge keeps your change until the next
+      schedule slot, like Hive.
     icon: mdi:home-thermometer
     mode: restart
     fields:
@@ -349,9 +359,30 @@ script:
           entity:
             domain: climate
     sequence:
+      - condition: state
+        entity_id: input_boolean.hive_ha_schedule
+        state: "on"
       - variables:
-          main: climate.hive_thermostat
-          target: "{{ state_attr(main, 'temperature') }}"
+          target: >-
+            {%- set day = now().strftime('%a') | lower -%}
+            {%- set t = now().strftime('%H:%M') -%}
+            {%- set ns = namespace(single=none, any=none, temp=none) -%}
+            {%- for s in states.switch | selectattr('attributes.tags', 'defined')
+                 | selectattr('attributes.tags', 'contains', 'hive_heating') | selectattr('state', 'eq', 'on') -%}
+              {%- set w = s.attributes.weekdays | default([]) -%}
+              {%- if day in w or 'daily' in w -%}
+                {%- if w | count == 1 -%}{%- set ns.single = s -%}{%- else -%}{%- set ns.any = s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set sw = ns.single or ns.any -%}
+            {%- if sw -%}{%- for slot in sw.attributes.timeslots | default([]) -%}
+              {%- set a = slot.split(' - ') -%}{%- set stop = '24:00' if a[1] == '00:00' else a[1] -%}
+              {%- if a[0] <= t < stop -%}
+                {%- set act = sw.attributes.actions[loop.index0] -%}
+                {%- set ns.temp = (act.data or act.service_data or {}).temperature -%}
+              {%- endif -%}
+            {%- endfor -%}{%- endif -%}
+            {{ ns.temp if ns.temp is not none else '' }}
           rooms: >-
             {% set ns = namespace(r=[]) %}
             {% for b in states.input_boolean | selectattr('state', 'eq', 'on') %}
@@ -365,17 +396,9 @@ script:
                 {% endif %}
               {% endif %}
             {% endfor %}{{ ns.r }}
-      - condition: state
-        entity_id: input_boolean.hive_ha_schedule
-        state: "on"
-      - condition: template
-        alias: Main thermostat on the schedule, not boosting, and no room is calling the boiler
-        value_template: >-
-          {{ is_number(target) and target | float(0) >= 5 and not is_state(main, 'off')
-             and not is_state('binary_sensor.hive_thermostat_boost','on')
-             and not is_state_attr(main, 'preset_mode', 'boost')
-             and not is_state('timer.boost_' ~ main.split('.')[1], 'active')
-             and not is_state('input_boolean.room_heat_call_active', 'on') }}
+      - alias: A schedule slot was found
+        condition: template
+        value_template: "{{ is_number(target) }}"
       - repeat:
           for_each: "{{ rooms }}"
           sequence:
