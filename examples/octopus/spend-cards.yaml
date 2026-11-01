@@ -1,0 +1,127 @@
+# Hive-style heating - Octopus Energy spend cards for Insights (optional): gas and electricity today, yesterday,
+# this month, last month and a 30-day chart, from the Octopus Energy integration's accumulative cost sensors.
+# The setup page adds them for you. By hand: replace YOUR_METER parts with your sensors and add under Insights.
+- type: custom:button-card
+  template: hive_section_title
+  name: Spend
+  grid_options:
+    columns: full
+- type: statistic
+  entity: sensor.octopus_energy_gas_YOUR_METER_current_accumulative_cost
+  name: Gas today
+  icon: mdi:fire
+  stat_type: change
+  period:
+    calendar:
+      period: day
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_electricity_YOUR_METER_current_accumulative_cost
+  name: Electricity today
+  icon: mdi:flash
+  stat_type: change
+  period:
+    calendar:
+      period: day
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_gas_YOUR_METER_current_accumulative_cost
+  name: Gas yesterday
+  icon: mdi:fire
+  stat_type: change
+  period:
+    calendar:
+      period: day
+      offset: -1
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_electricity_YOUR_METER_current_accumulative_cost
+  name: Electricity yesterday
+  icon: mdi:flash
+  stat_type: change
+  period:
+    calendar:
+      period: day
+      offset: -1
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_gas_YOUR_METER_current_accumulative_cost
+  name: Gas this month
+  icon: mdi:fire
+  stat_type: change
+  period:
+    calendar:
+      period: month
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_electricity_YOUR_METER_current_accumulative_cost
+  name: Electricity this month
+  icon: mdi:flash
+  stat_type: change
+  period:
+    calendar:
+      period: month
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_gas_YOUR_METER_current_accumulative_cost
+  name: Gas last month
+  icon: mdi:fire
+  stat_type: change
+  period:
+    calendar:
+      period: month
+      offset: -1
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistic
+  entity: sensor.octopus_energy_electricity_YOUR_METER_current_accumulative_cost
+  name: Electricity last month
+  icon: mdi:flash
+  stat_type: change
+  period:
+    calendar:
+      period: month
+      offset: -1
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: 6
+- type: statistics-graph
+  title: Daily spend · last 30 days
+  entities:
+  - entity: sensor.octopus_energy_gas_YOUR_METER_current_accumulative_cost
+    name: Gas
+    color: '#E8642E'
+  - entity: sensor.octopus_energy_electricity_YOUR_METER_current_accumulative_cost
+    name: Electricity
+    color: '#4350E6'
+  stat_types:
+  - change
+  period: day
+  days_to_show: 30
+  chart_type: bar
+  card_mod:
+    style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+  grid_options:
+    columns: full
+    rows: 5

@@ -1,0 +1,31 @@
+# Hive-style heating - Octopus Energy banner (optional): green for an upcoming / live Free Electricity session,
+# purple for a Saving Session, hidden when nothing is on. The setup page adds it as the 2nd card on Home.
+# By hand: replace YOUR_ACCOUNT as in package/octopus_alerts.yaml.
+type: custom:button-card
+template: hive_clear
+entity: calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session
+show_name: false
+show_icon: false
+show_state: false
+triggers_update:
+- calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session
+- calendar.octopus_energy_YOUR_ACCOUNT_octoplus_saving_sessions
+- sun.sun
+grid_options:
+  columns: full
+tap_action:
+  action: more-info
+custom_fields:
+  b: '[[[ const now=new Date(); const pick=(id,kind)=>{const s=states[id]; if(!s||!s.attributes.start_time) return null; const st=new Date(String(s.attributes.start_time).replace('' '',''T'')); const en=new Date(String(s.attributes.end_time||s.attributes.start_time).replace('' '',''T'')); if(isNaN(st)||en<now||st-now>7*864e5) return null; return {kind,st,en,on:s.state===''on''||(st<=now&&en>now)};}; const ev=pick(''calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session'',''free'')||pick(''calendar.octopus_energy_YOUR_ACCOUNT_octoplus_saving_sessions'',''saving''); if(!ev) return ''''; const t=(d)=>d.toLocaleTimeString(''en-GB'',{hour:''2-digit'',minute:''2-digit''}); const day=(d)=>d.toLocaleDateString(''en-GB'',{weekday:''short'',day:''numeric'',month:''short''}); const free=ev.kind===''free''; const bg=free?''linear-gradient(135deg,#1FA971,#46CF97)'':''linear-gradient(135deg,#4350E6,#7B80EA)''; const icon=free?''mdi:lightning-bolt'':''mdi:piggy-bank-outline''; const title=free?(ev.on?''Free electricity now'':''Free electricity coming up''):(ev.on?''Octopus Saving Session now'':''Octopus Saving Session coming up''); const sub=ev.on?(''Until ''+t(ev.en)+(free?'' \u00b7 turn things on!'':'' \u00b7 use less to earn points'')):(day(ev.st)+'', ''+t(ev.st)+''\u2013''+t(ev.en)); return `<div style=''display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:20px;background:${bg};color:#fff;box-shadow:0 4px 14px rgba(30,30,60,0.15);font-family:Inter,sans-serif''><div style=''width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''${icon}'' style=''--mdc-icon-size:24px;color:#fff''></ha-icon></div><div style=''text-align:left;line-height:1.3''><div style=''font-size:17px;font-weight:600''>${title}</div><div style=''font-size:14px;opacity:0.92''>${sub}</div></div></div>`; ]]]'
+styles:
+  card:
+  - display: '[[[ const now=new Date(); const pick=(id,kind)=>{const s=states[id]; if(!s||!s.attributes.start_time) return null; const st=new Date(String(s.attributes.start_time).replace('' '',''T'')); const en=new Date(String(s.attributes.end_time||s.attributes.start_time).replace('' '',''T'')); if(isNaN(st)||en<now||st-now>7*864e5) return null; return {kind,st,en,on:s.state===''on''||(st<=now&&en>now)};}; const ev=pick(''calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session'',''free'')||pick(''calendar.octopus_energy_YOUR_ACCOUNT_octoplus_saving_sessions'',''saving''); return ev ? ''block'' : ''none''; ]]]'
+  - padding: '0'
+  - background: none
+  - box-shadow: none
+  - overflow: visible
+  grid:
+  - grid-template-areas: '"b"'
+  custom_fields:
+    b:
+    - justify-self: stretch
