@@ -119,7 +119,16 @@ edit_path: /hive-heating/schedule-edit
 - Radiators **without** a smart valve heat up as normal, because nothing tells them to stay closed (a normal TRV only shuts once its room is already warm). For real room-by-room control, fit smart valves to the rooms you use most first; the rest can come later.
 - Most systems have a bypass valve or a towel rail without a TRV, so the boiler always has somewhere to send the water when nearly every valve is closed. If you're not sure about yours, ask a heating engineer when you fit smart valves.
 
-**Rooms on Schedule follow the heating schedule.** Tap **Schedule** on a radiator and that room follows the main heating schedule: when the schedule goes to 21°, the room goes to 21°; at an "off" slot (7°) it goes down too. It needs the heating schedule in Home Assistant (the main thermostat on Schedule). Change a room's temperature by hand and it keeps your change until the next schedule slot, like Hive. Rooms that are boosting or off are left alone, and a room catches up with the schedule when its boost ends. **Manual** or **Off** stops the room following. Without a Home Assistant schedule, Schedule uses the valve's own schedule as before. Separate schedules for each room are planned.
+**Rooms on Schedule follow the heating schedule.** Tap **Schedule** on a radiator and that room follows the main heating schedule: when the schedule goes to 21°, the room goes to 21°; at an "off" slot (7°) it goes down too. It needs the heating schedule in Home Assistant (the main thermostat on Schedule). Change a room's temperature by hand and it keeps your change until the next schedule slot, like Hive. Rooms that are boosting or off are left alone, and a room catches up with the schedule when its boost ends. **Manual** or **Off** stops the room following. Without a Home Assistant schedule, Schedule uses the valve's own schedule as before. **Each room can also have its own schedule** (beta): tap **View Schedule** on a radiator's page. A day without its own times follows the house schedule; change or add a period and that day becomes the room's own times. **••• → Follow the house schedule on …** puts a day back. The room must be on Schedule (its card shows a small clock).
+
+## Octopus Energy (optional)
+
+With the [Octopus Energy integration](https://github.com/BottlecapDave/HomeAssistant-OctopusEnergy) installed, the setup page finds it and adds:
+- a **banner on Home** for an upcoming or live **Free Electricity** session (green) or **Saving Session** (purple), hidden when nothing is on;
+- **gas and electricity spend** on Insights (today, yesterday, this month, last month and a 30-day chart);
+- **phone alerts** if you pick a phone: a new free electricity session, 1 hour before and when it starts, and 1 hour before a Saving Session or Power Down.
+
+The free electricity and Saving Session entities are off by default in the integration: enable them in **Settings → Entities** first.
 
 ## Good to know
 
@@ -133,6 +142,7 @@ edit_path: /hive-heating/schedule-edit
 
 ## Changelog
 
+- **1.6.2-beta.1**: **Per-room schedules**: every radiator page has **View Schedule**, so a room can have its own times (e.g. only the bedroom warm at night); days you don't change follow the house schedule. **Octopus Energy**: the setup page finds the integration and adds the free electricity / Saving Session banner, spend cards and optional phone alerts. Fix: rooms on Schedule could miss the house schedule's change for the first minute of a slot. Press **Update** on the setup page.
 - **1.6.1**: the heating flame now shows on Hive radiator valves straight away. Hive valves are slow to report "heating" to Home Assistant, so the cards also read the valve's State sensor. Rooms on Schedule now read the schedule itself, so they get the right temperature even while the main thermostat is boosting. Valves with no Off mode (like a Hive valve paired directly to Zigbee2MQTT) now go to frost protection when you tap Off. A small clock on each card shows which rooms are on Schedule (idea from Matt Sol). Fixes a Spook warning about `binary_sensor.none` on setups without a boost sensor. Press **Update** on the setup page.
 - **1.6.0**: everything from the 1.6.0 betas below. **Boost pop-up** (choose temperature and time, like the Hive app) with **Boost all radiators too**; **rooms on Schedule follow the heating schedule**; works with **any thermostat**, not just Hive; **Zigbee2MQTT (local)** option (beta); fixes for valves with their own boost preset and for Spook warnings. After updating, open the setup page and press **Update**. Thanks Matt Sol and everyone who tested.
 - **1.6.0-beta.8**: **Rooms on Schedule follow the heating schedule.** Tapping Schedule on a radiator used to hand it to the valve's own schedule, which most people never set, so the room sat at a fixed temperature. Now the room follows the main heating schedule. Press **Update** on the setup page to add it (it creates a switch per radiator). Thanks Matt Sol for spotting it.
