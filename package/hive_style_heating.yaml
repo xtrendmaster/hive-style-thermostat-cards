@@ -328,7 +328,7 @@ script:
           sched: >-
             {% set ns = namespace(single='', any='') %}
             {% for s in states.switch | selectattr('attributes.tags', 'defined')
-                 | selectattr('attributes.tags', 'contains', 'hive_heating') | selectattr('state', 'eq', 'on') %}
+                 | selectattr('attributes.tags', 'contains', 'hive_heating') | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) %}
               {% set w = s.attributes.weekdays | default([]) %}
               {% if day in w or 'daily' in w %}
                 {% if w | count == 1 %}{% set ns.single = s.entity_id %}{% else %}{% set ns.any = s.entity_id %}{% endif %}
@@ -344,11 +344,10 @@ script:
   hive_rooms_follow_schedule:
     alias: Hive - rooms on Schedule follow the heating schedule
     description: >-
-      Sets every radiator that's on Schedule (input_boolean.hive_room_schedule_<valve> on) to the
-      temperature of the current heating schedule slot (schedules tagged hive_heating). It reads the
-      schedule itself, so a boost on the main thermostat or rooms calling the boiler don't affect it.
-      Leaves alone rooms that are off or boosting. A room you nudge keeps your change until the next
-      schedule slot, like Hive.
+      Sets every radiator that's on Schedule (input_boolean.hive_room_schedule_<valve> on) to its
+      current schedule slot: the room's own schedule (schedules tagged hive_room_<valve>) if it has
+      times for today, otherwise the house heating schedule (tagged hive_heating). Leaves alone rooms
+      that are off or boosting. A room you nudge keeps your change until the next schedule slot, like Hive.
     icon: mdi:home-thermometer
     mode: restart
     fields:
@@ -358,64 +357,70 @@ script:
         selector:
           entity:
             domain: climate
+      include_own:
+        name: Include rooms with their own schedule
+        description: Rooms with their own times normally change on their own slots; turn on to set them now too.
+        default: false
+        selector:
+          boolean:
     sequence:
       - condition: state
         entity_id: input_boolean.hive_ha_schedule
         state: "on"
       - variables:
-          target: >-
+          rooms: >-
+            {%- macro slot(tag) -%}
             {%- set day = now().strftime('%a') | lower -%}
             {%- set t = now().strftime('%H:%M') -%}
-            {%- set ns = namespace(single=none, any=none, temp=none) -%}
-            {%- for s in states.switch | selectattr('attributes.tags', 'defined')
-                 | selectattr('attributes.tags', 'contains', 'hive_heating') | selectattr('state', 'eq', 'on') -%}
+            {%- set ns = namespace(single=none, any=none, temp='') -%}
+            {%- for s in states.switch | selectattr('attributes.tags', 'defined') | selectattr('attributes.tags', 'contains', tag) | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) -%}
               {%- set w = s.attributes.weekdays | default([]) -%}
-              {%- if day in w or 'daily' in w -%}
-                {%- if w | count == 1 -%}{%- set ns.single = s -%}{%- else -%}{%- set ns.any = s -%}{%- endif -%}
+              {%- if day in w or 'daily' in w or ('workday' in w and day in ['mon','tue','wed','thu','fri']) or ('weekend' in w and day in ['sat','sun']) -%}
+                {%- if w | count == 1 and w[0] == day -%}{%- set ns.single = s -%}{%- else -%}{%- set ns.any = s -%}{%- endif -%}
               {%- endif -%}
             {%- endfor -%}
             {%- set sw = ns.single or ns.any -%}
-            {%- if sw -%}{%- for slot in sw.attributes.timeslots | default([]) -%}
-              {%- set a = slot.split(' - ') -%}{%- set stop = '24:00' if a[1] == '00:00' else a[1] -%}
+            {%- if sw -%}{%- for sl in sw.attributes.timeslots | default([]) -%}
+              {%- set a = sl.split(' - ') -%}{%- set stop = '24:00' if a[1] == '00:00' else a[1] -%}
               {%- if a[0] <= t < stop -%}
-                {%- set act = sw.attributes.actions[loop.index0] -%}
+                {%- set acts = sw.attributes.actions | default([]) -%}
+                {%- set act = acts[loop.index0] if acts | count > 1 else acts[0] -%}
                 {%- set ns.temp = (act.data or act.service_data or {}).temperature -%}
               {%- endif -%}
             {%- endfor -%}{%- endif -%}
-            {{ ns.temp if ns.temp is not none else '' }}
-          rooms: >-
-            {% set ns = namespace(r=[]) %}
-            {% for b in states.input_boolean | selectattr('state', 'eq', 'on') %}
-              {% if b.object_id.startswith('hive_room_schedule_') %}
-                {% set e = 'climate.' ~ b.object_id[19:] %}
-                {% set st = states[e] %}
-                {% if st and st.state not in ['off', 'unavailable', 'unknown'] and (not (only | default('')) or e == only)
-                      and st.attributes.preset_mode | default('') != 'boost'
-                      and not is_state('timer.boost_' ~ b.object_id[19:], 'active') %}
-                  {% set ns.r = ns.r + [e] %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}{{ ns.r }}
-      - alias: A schedule slot was found
-        condition: template
-        value_template: "{{ is_number(target) }}"
+            {{- ns.temp -}}
+            {%- endmacro -%}
+            {%- set house = slot('hive_heating') -%}
+            {%- set ns2 = namespace(r=[]) -%}
+            {%- for b in states.input_boolean | selectattr('state', 'eq', 'on') -%}
+              {%- if b.object_id.startswith('hive_room_schedule_') -%}
+                {%- set o = b.object_id[19:] -%}{%- set e = 'climate.' ~ o -%}{%- set st = states[e] -%}
+                {%- if st and st.state not in ['off', 'unavailable', 'unknown'] and (not (only | default('')) or e == only)
+                      and st.attributes.preset_mode | default('') != 'boost' and not is_state('timer.boost_' ~ o, 'active') -%}
+                  {%- set own = slot('hive_room_' ~ o) -%}
+                  {%- set tt = own if own != '' else house -%}
+                  {%- if tt != '' and (own == '' or (only | default('')) or (include_own | default(false))) -%}{%- set ns2.r = ns2.r + [[e, tt | float, own != '']] -%}{%- endif -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns2.r }}
       - repeat:
           for_each: "{{ rooms }}"
           sequence:
             - variables:
                 t: >-
-                  {{ [[target | float, state_attr(repeat.item, 'min_temp') | float(5)] | max,
-                      state_attr(repeat.item, 'max_temp') | float(32)] | min }}
-            - if: "{{ (state_attr(repeat.item, 'temperature') | float(-1)) != t }}"
+                  {{ [[repeat.item[1] | float, state_attr(repeat.item[0], 'min_temp') | float(5)] | max,
+                      state_attr(repeat.item[0], 'max_temp') | float(32)] | min }}
+            - if: "{{ (state_attr(repeat.item[0], 'temperature') | float(-1)) != t }}"
               then:
                 - action: climate.set_temperature
                   target:
-                    entity_id: "{{ repeat.item }}"
+                    entity_id: "{{ repeat.item[0] }}"
                   data:
                     temperature: "{{ t }}"
                   continue_on_error: true
                 - delay:
-                    seconds: "{{ 4 if repeat.item in integration_entities('hive') else 0 }}"
+                    seconds: "{{ 4 if repeat.item[0] in integration_entities('hive') else 0 }}"
 
   hive_apply_water_schedule_now:
     alias: Hive - apply current hot water slot now
@@ -431,7 +436,7 @@ script:
           sched: >-
             {% set ns = namespace(single='', any='') %}
             {% for s in states.switch | selectattr('attributes.tags', 'defined')
-                 | selectattr('attributes.tags', 'contains', 'hive_hot_water') | selectattr('state', 'eq', 'on') %}
+                 | selectattr('attributes.tags', 'contains', 'hive_hot_water') | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) %}
               {% set w = s.attributes.weekdays | default([]) %}
               {% if day in w or 'daily' in w %}
                 {% if w | count == 1 %}{% set ns.single = s.entity_id %}{% else %}{% set ns.any = s.entity_id %}{% endif %}
@@ -457,7 +462,7 @@ script:
           sched: >-
             {% set ns = namespace(best='', t=none) %}
             {% for s in states.switch | selectattr('attributes.tags', 'defined')
-                 | selectattr('attributes.tags', 'contains', 'hive_heating') | selectattr('state', 'eq', 'on') %}
+                 | selectattr('attributes.tags', 'contains', 'hive_heating') | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) %}
               {% set nt = as_datetime(s.attributes.next_trigger) if s.attributes.next_trigger is defined and s.attributes.next_trigger else none %}
               {% if nt is not none and (ns.t is none or nt < ns.t) %}{% set ns.t = nt %}{% set ns.best = s.entity_id %}{% endif %}
             {% endfor %}{{ ns.best }}

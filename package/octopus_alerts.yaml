@@ -1,0 +1,93 @@
+# Hive-style heating - Octopus Energy phone alerts (optional)
+# The setup page adds this for you when it finds the Octopus Energy integration (BottlecapDave) and you pick a phone.
+# By hand: enable the "Octoplus Free Electricity" calendar and "... Session Events" entities (disabled by default),
+# replace YOUR_ACCOUNT with your account id as it appears in those entity ids (e.g. a_1a2b3c4d) and
+# notify.mobile_app_YOUR_PHONE with your phone, then put this file in /config/packages/ and restart.
+automation:
+- id: hive_style_octopus_alerts
+  alias: Octopus - free electricity & saving session alerts
+  description: 'Phone alerts for Octoplus events: a new Free Electricity session announced, 1 hour before and when it starts; 1 hour before a Saving Session or Power Down.'
+  mode: queued
+  max: 10
+  triggers:
+  - trigger: state
+    entity_id: event.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session_events
+    id: free_announced
+  - trigger: calendar
+    entity_id: calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session
+    event: start
+    offset: '-1:00:00'
+    id: free_soon
+  - trigger: calendar
+    entity_id: calendar.octopus_energy_YOUR_ACCOUNT_octoplus_free_electricity_session
+    event: start
+    offset: 0:00:00
+    id: free_now
+  - trigger: calendar
+    entity_id: calendar.octopus_energy_YOUR_ACCOUNT_octoplus_saving_sessions
+    event: start
+    offset: '-1:00:00'
+    id: saving_soon
+  - trigger: calendar
+    entity_id: calendar.octopus_energy_YOUR_ACCOUNT_octoplus_power_down
+    event: start
+    offset: '-1:00:00'
+    id: power_down_soon
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: free_announced
+      sequence:
+      - variables:
+          new_list: '{% set to = trigger.to_state.attributes if trigger.to_state is not none else {} %}{% set fr = trigger.from_state.attributes if trigger.from_state is not none else {} %}{% set old = ((fr.get(''events'') or []) + (fr.get(''available_events'') or [])) | map(attribute=''start'') | map(''string'') | list %}{% set ns = namespace(out=[]) %}{% for e in (to.get(''events'') or []) + (to.get(''available_events'') or []) %}{% if e.start is defined and (e.start | string) not in old and as_datetime(e.start | string) is not none and as_datetime(e.start | string) > now() %}{% set ns.out = ns.out + [as_local(as_datetime(e.start | string)).strftime(''%a %-d %b, %H:%M'') ~ (('' to '' ~ as_local(as_datetime(e.end | string)).strftime(''%H:%M'')) if e.end is defined else '''')] %}{% endif %}{% endfor %}{{ ns.out }}'
+      - condition: template
+        value_template: '{{ new_list | count > 0 }}'
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: ⚡ Free electricity announced
+          message: 'Octopus free electricity: {{ new_list | join('' · '') }}. Plan the washing, dishwasher or car charging for then.'
+          data:
+            tag: octopus-free-electricity
+    - conditions:
+      - condition: trigger
+        id: free_soon
+      sequence:
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: ⚡ Free electricity in 1 hour
+          message: Free from {{ as_local(as_datetime(trigger.calendar_event.start)).strftime('%H:%M') }} to {{ as_local(as_datetime(trigger.calendar_event.end)).strftime('%H:%M') }}. Get the washing, dishwasher or car ready.
+          data:
+            tag: octopus-free-electricity
+    - conditions:
+      - condition: trigger
+        id: free_now
+      sequence:
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: ⚡ Free electricity now
+          message: Electricity is free until {{ as_local(as_datetime(trigger.calendar_event.end)).strftime('%H:%M') }}. Turn things on!
+          data:
+            tag: octopus-free-electricity
+            push:
+              interruption-level: time-sensitive
+    - conditions:
+      - condition: trigger
+        id: saving_soon
+      sequence:
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: 💷 Octopus Saving Session in 1 hour
+          message: '{{ as_local(as_datetime(trigger.calendar_event.start)).strftime(''%H:%M'') }} to {{ as_local(as_datetime(trigger.calendar_event.end)).strftime(''%H:%M'') }}: use less electricity to earn Octopoints.'
+          data:
+            tag: octopus-saving-session
+    - conditions:
+      - condition: trigger
+        id: power_down_soon
+      sequence:
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: 🔌 Octopus Power Down in 1 hour
+          message: '{{ as_local(as_datetime(trigger.calendar_event.start)).strftime(''%H:%M'') }} to {{ as_local(as_datetime(trigger.calendar_event.end)).strftime(''%H:%M'') }}: use less electricity during this time.'
+          data:
+            tag: octopus-power-down
