@@ -1,9 +1,3 @@
-# Hive-style thermostat cards - example dashboard (v1.6)
-# Easiest: use the setup page instead (add the card "Hive-style heating setup" to an empty dashboard).
-# Manual: Settings > Dashboards > Add dashboard > "New dashboard from scratch", URL: hive-heating,
-# then ... > Edit > Raw configuration editor > paste this file and replace the example entity IDs
-# (climate.hive_thermostat, water_heater.hive_hot_water, climate.bedroom_radiator, climate.study_radiator,
-# binary_sensor.hive_*, sensor.hive_thermostat_battery_level). Batteries card: edit variables.items.
 button_card_templates:
   hive_advance:
     icon: mdi:chevron-double-right
@@ -51,7 +45,7 @@ button_card_templates:
       - height: 32px
       - border-radius: 16px
       - overflow: visible
-      - background: '[[[ return entity.state===''on'' ? ''#4350E6'' : ''var(--hs-line,#E7E7EC)'' ]]]'
+      - background: '[[[ return entity.state===''on'' ? ''var(--hs-accent,#4350E6)'' : ''var(--hs-line,#E7E7EC)'' ]]]'
       - box-shadow: inset 0 0 0 1px rgba(128,128,140,0.35)
       custom_fields:
         k:
@@ -146,17 +140,18 @@ button_card_templates:
       - height: 44px
       - border-radius: 14px
       - padding: 0 12px
-      - background: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#4350E6'':''var(--hs-pill,#EEF0FD)''; ]]]'
+      - background: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''var(--hs-accent,#4350E6)'':''var(--hs-boost-bg,var(--hs-pill,#EEF0FD))''; ]]]'
+      - border: var(--hs-boost-border,none)
       grid:
       - grid-template-columns: auto auto
       - justify-content: center
       - column-gap: 8px
       icon:
       - width: 22px
-      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''#4350E6''; ]]]'
+      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
       name:
       - font-size: 17px
-      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''#4350E6''; ]]]'
+      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
     tap_action:
       action: fire-dom-event
       hive_boost:
@@ -208,19 +203,16 @@ button_card_templates:
       - width: 40px
       - border-radius: 50%
       - margin: 0 auto
-      - background: '[[[ return entity.state===variables.day ? ''#4350E6'' : ''transparent'' ]]]'
+      - background: '[[[ return entity.state===variables.day ? ''var(--hs-accent,#4350E6)'' : ''transparent'' ]]]'
       name:
       - font-size: 18px
       - color: '[[[ return entity.state===variables.day ? ''#FFFFFF'' : ''var(--hs-text,#2F2F33)'' ]]]'
     template: hive_clear
   hive_detail:
     custom_fields:
-      home: '[[[ if (entity.entity_id.startsWith(''water_heater.'')) return ''''; const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const c = parseFloat(entity.attributes.current_temperature); const bid = findBatt(entity.entity_id, variables.battery); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; let bh = ''''; if (!isNaN(b)) { const r = Math.round(b); const lvl = Math.min(100, Math.max(10, Math.round(r / 10) * 10)); const ic = r < 15 ? ''mdi:battery-alert-variant-outline'' : (lvl === 100 ? ''mdi:battery'' : ''mdi:battery-'' + lvl); const col = r < 15 ? ''#FFB3AD'' : ''#FFFFFF''; bh = `<span style=''opacity:.45;margin:0 4px''>·</span><ha-icon
-        icon=''${ic}'' style=''--mdc-icon-size:20px;color:${col}''></ha-icon><span style=''font-size:16px;color:${col}''>${r}%</span>`; } return `<div style=''display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:#FFFFFF;font-size:19px''><ha-icon icon=''mdi:home-outline'' style=''--mdc-icon-size:24px''></ha-icon>${isNaN(c) ? ''--'' : c.toFixed(1)}°${bh}</div>`; ]]]'
-      num: '[[[ const eid=entity.entity_id; const st=entity.state; const big=(x)=>`<div style=''font-family:DM Serif Display,serif;color:#FFFFFF;font-size:96px;line-height:1;letter-spacing:-2px''>${x}</div>`; if(eid.startsWith(''water_heater.'')){ const hw=states[''binary_sensor.hive_hot_water_state'']; return big(st===''off''?''Off'':((hw&&hw.state===''on'')?''On'':''Off'')); } const t=parseFloat(entity.attributes.temperature); if(st===''off''||isNaN(t)) return big(''Off''); const p=t.toFixed(1).split(''.''); return `<div style=''display:flex;align-items:flex-start;font-family:DM Serif Display,serif;color:#FFFFFF;line-height:0.8''><span style=''font-size:112px;letter-spacing:-3px''>${p[0]}</span><span style=''display:flex;flex-direction:column;justify-content:space-between;height:84px;margin-left:4px''><span style=''display:block;width:19px;height:19px;border:4px solid #FFFFFF;border-radius:50%;box-sizing:border-box;margin-top:-4px''></span><span style=''font-size:46px''>.${p[1]}</span></span></div>`;
-        ]]]'
-      ruler: '[[[ const st=entity.state; if(entity.entity_id.startsWith(''water_heater.'')||st===''off'') return ''''; const t=parseFloat(entity.attributes.temperature); const cur=parseFloat(entity.attributes.current_temperature); if(isNaN(t)) return ''''; const house=isNaN(cur)?null:Math.round(cur*2)/2; const step=47, mid=235; const dash=`<div style=''width:13px;height:3px;border-radius:2px;background:rgba(255,255,255,0.55)''></div>`; let h=''''; for(let i=-5;i<=5;i++){ const v=Math.round((t+i*0.5)*2)/2; const y=mid-i*step; let el; if(i===0) el=`<div style=''width:58px;height:5px;border-radius:3px;background:var(--hs-card,#FFFFFF)''></div>`; else if(house!==null&&v===house) el=`<div style=''display:flex;align-items:center;gap:6px''>${dash}<ha-icon icon=''mdi:home'' style=''--mdc-icon-size:22px;color:rgba(255,255,255,0.7)''></ha-icon></div>`; else if(Math.abs((v%1)-0.5)<0.01) el=`<div style=''font-size:20px;font-weight:600;letter-spacing:-0.3px;color:rgba(255,255,255,0.72)''>${v.toFixed(1)}°</div>`;
-        else el=dash; h+=`<div style=''position:absolute;left:0;top:${y}px;transform:translateY(-50%);display:flex;align-items:center''>${el}</div>`; } return `<div style=''position:relative;height:${mid*2}px;width:100%;-webkit-mask-image:linear-gradient(transparent 0%,#000 14%,#000 86%,transparent 100%);mask-image:linear-gradient(transparent 0%,#000 14%,#000 86%,transparent 100%)''>${h}</div>`; ]]]'
+      home: '[[[ if (entity.entity_id.startsWith(''water_heater.'')) return ''''; const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const c = parseFloat(entity.attributes.current_temperature); const bid = findBatt(entity.entity_id, variables.battery); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; let bh = ''''; if (!isNaN(b)) { const r = Math.round(b); const lvl = Math.min(100, Math.max(10, Math.round(r / 10) * 10)); const ic = r < 15 ? ''mdi:battery-alert-variant-outline'' : (lvl === 100 ? ''mdi:battery'' : ''mdi:battery-'' + lvl); const col = r < 15 ? ''#FFB3AD'' : ''#FFFFFF''; bh = `<span style=''opacity:.45;margin:0 4px''>·</span><ha-icon icon=''${ic}'' style=''--mdc-icon-size:20px;color:${col}''></ha-icon><span style=''font-size:16px;color:${col}''>${r}%</span>`; } return `<div style=''display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:#FFFFFF;font-size:19px''><ha-icon icon=''mdi:home-outline'' style=''--mdc-icon-size:24px''></ha-icon>${isNaN(c) ? ''--'' : c.toFixed(1)}°${bh}</div>`; ]]]'
+      num: '[[[ const eid=entity.entity_id; const st=entity.state; const big=(x)=>`<div style=''font-family:var(--hs-serif,DM Serif Display,serif);font-weight:var(--hs-serif-w,400);color:#FFFFFF;font-size:96px;line-height:1;letter-spacing:-2px''>${x}</div>`; if(eid.startsWith(''water_heater.'')){ const hw=states[''binary_sensor.hive_hot_water_state'']; return big(st===''off''?''Off'':((hw&&hw.state===''on'')?''On'':''Off'')); } const t=parseFloat(entity.attributes.temperature); if(st===''off''||isNaN(t)) return big(''Off''); const p=t.toFixed(1).split(''.''); return `<div style=''display:flex;align-items:flex-start;font-family:var(--hs-serif,DM Serif Display,serif);font-weight:var(--hs-serif-w,400);color:#FFFFFF;line-height:0.8''><span style=''font-size:112px;letter-spacing:-3px''>${p[0]}</span><span style=''display:flex;flex-direction:column;justify-content:space-between;height:84px;margin-left:4px''><span style=''display:block;width:19px;height:19px;border:4px solid #FFFFFF;border-radius:50%;box-sizing:border-box;margin-top:-4px''></span><span style=''font-size:46px''>.${p[1]}</span></span></div>`; ]]]'
+      ruler: '[[[ const st=entity.state; if(entity.entity_id.startsWith(''water_heater.'')||st===''off'') return ''''; const t=parseFloat(entity.attributes.temperature); const cur=parseFloat(entity.attributes.current_temperature); if(isNaN(t)) return ''''; const house=isNaN(cur)?null:Math.round(cur*2)/2; const step=47, mid=235; const dash=`<div style=''width:13px;height:3px;border-radius:2px;background:rgba(255,255,255,0.55)''></div>`; let h=''''; for(let i=-5;i<=5;i++){ const v=Math.round((t+i*0.5)*2)/2; const y=mid-i*step; let el; if(i===0) el=`<div style=''width:58px;height:5px;border-radius:3px;background:var(--hs-card,#FFFFFF)''></div>`; else if(house!==null&&v===house) el=`<div style=''display:flex;align-items:center;gap:6px''>${dash}<ha-icon icon=''mdi:home'' style=''--mdc-icon-size:22px;color:rgba(255,255,255,0.7)''></ha-icon></div>`; else if(Math.abs((v%1)-0.5)<0.01) el=`<div style=''font-size:20px;font-weight:600;letter-spacing:-0.3px;color:rgba(255,255,255,0.72)''>${v.toFixed(1)}°</div>`; else el=dash; h+=`<div style=''position:absolute;left:0;top:${y}px;transform:translateY(-50%);display:flex;align-items:center''>${el}</div>`; } return `<div style=''position:relative;height:${mid*2}px;width:100%;-webkit-mask-image:linear-gradient(transparent 0%,#000 14%,#000 86%,transparent 100%);mask-image:linear-gradient(transparent 0%,#000 14%,#000 86%,transparent 100%)''>${h}</div>`; ]]]'
       title: '[[[ return `<div style=''font-size:19px;color:#FFFFFF;white-space:nowrap''>${variables.name||entity.attributes.friendly_name}</div>`; ]]]'
     hold_action:
       action: none
@@ -235,7 +227,7 @@ button_card_templates:
       - box-shadow: none
       - padding: calc(env(safe-area-inset-top) + 10px) 16px 40px
       - font-family: Inter, sans-serif
-      - background: '[[[ const st=entity.state; const ph=variables.bg_photo; const a=ph?0.55:1; const ga=ph?0.6:1; const grey=`linear-gradient(180deg,rgba(142,151,172,${ga}) 0%,rgba(186,193,207,${ga}) 100%)`; let g; if(entity.entity_id.startsWith(''water_heater.'')) g = st===''off''?grey:''linear-gradient(180deg,#3E7FE0 0%,#5E9EEC 55%,#7DB7F2 100%)''; else if(st===''off'') g = grey; else { const t=parseFloat(entity.attributes.temperature); const H=[[5,222],[9,250],[13,300],[16,350],[18.5,376],[22,368],[30,358]]; const c=Math.max(5,Math.min(30,isNaN(t)?18.5:t)); let h=358; for(let i=0;i<H.length-1;i++){ if(c<=H[i+1][0]){ h=H[i][1]+(H[i+1][1]-H[i][1])*(c-H[i][0])/(H[i+1][0]-H[i][0]); break; } } g=`linear-gradient(180deg,hsla(${(h%360).toFixed(0)},76%,56%,${a}) 0%,hsla(${((h+14)%360).toFixed(0)},80%,64%,${a}) 100%)`; } return ph ? `${g}, url("${ph}")` : g; ]]]'
+      - background: '[[[ const st=entity.state; const ph=variables.bg_photo; const a=ph?0.55:1; const ga=ph?0.6:1; const noir=((states[''input_select.hive_appearance'']||{}).state===''Noir''); const grey=noir?`radial-gradient(120% 60% at 50% 40%,rgba(233,196,106,0.08) 0%,transparent 70%),linear-gradient(180deg,rgba(18,21,28,${ph?0.6:1}) 0%,rgba(7,8,11,${ph?0.85:1}) 100%)`:`linear-gradient(180deg,rgba(142,151,172,${ga}) 0%,rgba(186,193,207,${ga}) 100%)`; let g; if(entity.entity_id.startsWith(''water_heater.'')) g = st===''off''?grey:(noir?`radial-gradient(120% 60% at 50% 40%,rgba(94,158,236,0.30) 0%,rgba(94,158,236,0.07) 45%,transparent 75%),linear-gradient(180deg,rgba(14,16,21,${ph?0.6:1}) 0%,rgba(7,8,11,${ph?0.85:1}) 100%)`:''linear-gradient(180deg,#3E7FE0 0%,#5E9EEC 55%,#7DB7F2 100%)''); else if(st===''off'') g = grey; else { const t=parseFloat(entity.attributes.temperature); const H=[[5,222],[9,250],[13,300],[16,350],[18.5,376],[22,368],[30,358]]; const c=Math.max(5,Math.min(30,isNaN(t)?18.5:t)); let h=358; for(let i=0;i<H.length-1;i++){ if(c<=H[i+1][0]){ h=H[i][1]+(H[i+1][1]-H[i][1])*(c-H[i][0])/(H[i+1][0]-H[i][0]); break; } } g=noir?`radial-gradient(120% 60% at 50% 40%,hsla(${(h%360).toFixed(0)},80%,58%,0.34) 0%,hsla(${(h%360).toFixed(0)},80%,58%,0.08) 45%,transparent 75%),linear-gradient(180deg,rgba(14,16,21,${ph?0.6:1}) 0%,rgba(7,8,11,${ph?0.85:1}) 100%)`:`linear-gradient(180deg,hsla(${(h%360).toFixed(0)},76%,56%,${a}) 0%,hsla(${((h+14)%360).toFixed(0)},80%,64%,${a}) 100%)`; } return ph ? `${g}, url("${ph}")` : g; ]]]'
       - transition: background 0.4s ease
       - background-repeat: no-repeat
       - background-size: '[[[ return variables.bg_photo ? (variables.bg_pan ? ''100% 100%, auto 100%'' : ''100% 100%, cover'') : ''auto''; ]]]'
@@ -297,10 +289,9 @@ button_card_templates:
     extra_styles: '@keyframes hive-pan { 0% { background-position: 0 0, 0% 50%; } 100% { background-position: 0 0, 100% 50%; } }'
   hive_device:
     custom_fields:
-      head: '[[[ const eid=entity.entity_id; const t=parseFloat(entity.attributes.temperature); let right; if(eid.startsWith(''water_heater.'')){ const hw=states[''binary_sensor.hive_hot_water_state'']; right=(hw&&hw.state===''on'')?''On'':''Off''; } else if(entity.state===''off''||isNaN(t)||t<=7){ right=''Off''; } else { const cur=parseFloat(entity.attributes.current_temperature); const ic=((s=>s?s.state===''on'':entity.attributes.hvac_action===''heating'')((hass.entities&&(hass.entities[entity.entity_id]||{}).platform===''hive'')?states[''binary_sensor.''+entity.entity_id.split(''.'')[1]+''_state'']:null))?`<ha-icon icon=''mdi:fire'' style=''--mdc-icon-size:20px;color:#E8642E;margin-left:8px''></ha-icon>`:(cur>=t?`<ha-icon icon=''mdi:check-circle-outline'' style=''--mdc-icon-size:20px;color:var(--hs-text,#2F2F33);margin-left:8px''></ha-icon>`:''''); right=`Target&nbsp;<span style=''font-weight:600''>${t.toFixed(1)}°</span>${ic}`; } const sc=(()=>{ if(eid.startsWith(''water_heater.'')){ const w=states[''input_boolean.hive_ha_water_schedule'']; return (w&&w.state===''on'')?''house'':(entity.state===''auto''||entity.state===''eco''?''house'':''''); } if(eid===''climate.hive_thermostat''){ const h=states[''input_boolean.hive_ha_schedule'']; return ((h&&h.state===''on''&&entity.state!==''off'')||entity.state===''auto''||entity.state===''eco'')?''house'':''''; } const o=eid.split(''.'')[1]; const f=states[''input_boolean.hive_room_schedule_''+o]; if(f&&f.state===''on''&&entity.state!==''off''){ const d=[''sun'',''mon'',''tue'',''wed'',''thu'',''fri'',''sat''][new Date().getDay()]; const we=(d===''sat''||d===''sun''); const own=Object.keys(states).some(k=>{ if(!k.startsWith(''switch.'')) return false; const s=states[k]; const a=s.attributes||{}; if(!Array.isArray(a.tags)||!a.tags.includes(''hive_room_''+o)||[''off'',''unavailable'',''unknown''].includes(s.state)) return false; const w=a.weekdays||[]; return w.includes(d)||w.includes(''daily'')||(w.includes(''workday'')&&!we)||(w.includes(''weekend'')&&we); }); return own?''own'':''house''; } return (entity.state===''auto''||entity.state===''eco'')?''own'':''''; })(); if(sc) right=`<ha-icon icon=''mdi:clock-outline'' title=''${sc===''own''?''Own schedule today'':''Following the house schedule''}'' style=''--mdc-icon-size:18px;color:${sc===''own''?''var(--hs-sub,#66666B)'':''#1FA971''};margin-right:8px''></ha-icon>`+right; return `<div style=''display:flex;align-items:center;gap:12px''><div style=''width:30px;height:30px;border-radius:9px;background:var(--hs-line,#F2F2F5);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''${variables.icon}''
-        style=''--mdc-icon-size:17px;color:var(--hs-text,#3A3A3E)''></ha-icon></div><div style=''flex:1;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left''>${variables.name||entity.attributes.friendly_name}</div><div style=''font-size:17px;display:flex;align-items:center;white-space:nowrap''>${right}</div></div>`; ]]]'
-      temp: '[[[ if(entity.entity_id.startsWith(''water_heater.'')) return `<div style=''height:44px''></div>`; const c=parseFloat(entity.attributes.current_temperature); return `<div style=''text-align:left''><div style=''font-size:46px;font-weight:500;letter-spacing:-1px;line-height:1;color:var(--hs-text,#2F2F33)''>${isNaN(c)?''--'':c.toFixed(1)}°</div><div style=''font-size:13px;color:var(--hs-sub,#55555B);margin-top:6px''>Actual</div></div>`; ]]]'
-      batt: '[[[ const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const bid = findBatt(entity.entity_id, variables.battery); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; if (isNaN(b) || b >= 15) return ''''; return `<div style=''width:22px;height:22px;border-radius:50%;background:#D9342B;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--hs-card,#FFFFFF)''><ha-icon icon=''mdi:battery-alert-variant-outline'' style=''--mdc-icon-size:14px;color:#FFFFFF''></ha-icon></div>`; ]]]'
+      head: '[[[ const eid=entity.entity_id; const t=parseFloat(entity.attributes.temperature); let right; if(eid.startsWith(''water_heater.'')){ const hw=states[''binary_sensor.hive_hot_water_state'']; right=(hw&&hw.state===''on'')?''On'':''Off''; } else if(entity.state===''off''||isNaN(t)||t<=7){ right=''Off''; } else { const cur=parseFloat(entity.attributes.current_temperature); const ic=((s=>s?s.state===''on'':entity.attributes.hvac_action===''heating'')((hass.entities&&(hass.entities[entity.entity_id]||{}).platform===''hive'')?states[''binary_sensor.''+entity.entity_id.split(''.'')[1]+''_state'']:null))?`<ha-icon icon=''mdi:fire'' style=''--mdc-icon-size:20px;color:#E8642E;margin-left:8px''></ha-icon>`:(cur>=t?`<ha-icon icon=''mdi:check-circle-outline'' style=''--mdc-icon-size:20px;color:var(--hs-tick,var(--hs-text,#2F2F33));opacity:var(--hs-tick-o,1);margin-left:8px''></ha-icon>`:''''); right=`<span style=''color:var(--hs-target-c,inherit);font-size:var(--hs-target-size,inherit)''>Target</span>&nbsp;<span style=''font-weight:var(--hs-target-w,600);font-variant-numeric:tabular-nums''>${t.toFixed(1)}°</span>${ic}`; } const sc=(()=>{ if(eid.startsWith(''water_heater.'')){ const w=states[''input_boolean.hive_ha_water_schedule'']; return (w&&w.state===''on'')?''house'':(entity.state===''auto''||entity.state===''eco''?''house'':''''); } if(eid===''climate.hive_thermostat''){ const h=states[''input_boolean.hive_ha_schedule'']; return ((h&&h.state===''on''&&entity.state!==''off'')||entity.state===''auto''||entity.state===''eco'')?''house'':''''; } const o=eid.split(''.'')[1]; const f=states[''input_boolean.hive_room_schedule_''+o]; if(f&&f.state===''on''&&entity.state!==''off''){ const d=[''sun'',''mon'',''tue'',''wed'',''thu'',''fri'',''sat''][new Date().getDay()]; const we=(d===''sat''||d===''sun''); const own=Object.keys(states).some(k=>{ if(!k.startsWith(''switch.'')) return false; const s=states[k]; const a=s.attributes||{}; if(!Array.isArray(a.tags)||!a.tags.includes(''hive_room_''+o)||[''off'',''unavailable'',''unknown''].includes(s.state)) return false; const w=a.weekdays||[]; return w.includes(d)||w.includes(''daily'')||(w.includes(''workday'')&&!we)||(w.includes(''weekend'')&&we); }); return own?''own'':''house''; } return (entity.state===''auto''||entity.state===''eco'')?''own'':''''; })(); if(sc) right=`<ha-icon icon=''mdi:clock-outline'' title=''${sc===''own''?''Own schedule today'':''Following the house schedule''}'' style=''--mdc-icon-size:18px;color:${sc===''own''?''var(--hs-sub,#66666B)'':''#1FA971''};margin-right:8px''></ha-icon>`+right; return `<div style=''display:flex;align-items:center;gap:12px''><div style=''width:30px;height:30px;border-radius:9px;background:var(--hs-line,#F2F2F5);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''${variables.icon}'' style=''--mdc-icon-size:17px;color:var(--hs-text,#3A3A3E)''></ha-icon></div><div style=''flex:1;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left''>${variables.name||entity.attributes.friendly_name}</div><div style=''font-size:17px;display:flex;align-items:center;white-space:nowrap''>${right}</div></div>`; ]]]'
+      temp: '[[[ if(entity.entity_id.startsWith(''water_heater.'')) return `<div style=''height:44px''></div>`; const c=parseFloat(entity.attributes.current_temperature); return `<div style=''text-align:left''><div style=''font-size:46px;font-weight:var(--hs-num-w,500);letter-spacing:var(--hs-num-ls,-1px);line-height:1;font-variant-numeric:tabular-nums;color:var(--hs-text,#2F2F33)''>${isNaN(c)?''--'':c.toFixed(1)}°</div><div style=''font-size:var(--hs-cap-size,13px);letter-spacing:var(--hs-cap-ls,normal);text-transform:var(--hs-cap-tt,none);font-weight:var(--hs-cap-w,400);color:var(--hs-sub,#55555B);margin-top:6px''>Actual</div></div>`; ]]]'
+      batt: '[[[ const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const bid = findBatt(entity.entity_id, variables.battery); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; if (isNaN(b) || b >= 15) return ''''; if (((states[''input_select.hive_appearance'']||{}).state)===''Noir'') return `<div title=''Battery low'' style=''width:9px;height:9px;border-radius:50%;background:#FF5A5F;margin:3px 0 0 -2px;box-shadow:0 0 0 2px var(--hs-card,#FFFFFF)''></div>`; return `<div style=''width:22px;height:22px;border-radius:50%;background:#D9342B;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--hs-card,#FFFFFF)''><ha-icon icon=''mdi:battery-alert-variant-outline'' style=''--mdc-icon-size:14px;color:#FFFFFF''></ha-icon></div>`; ]]]'
     hold_action:
       action: more-info
     show_icon: false
@@ -309,9 +300,9 @@ button_card_templates:
     styles:
       card:
       - background: var(--hs-card,#FFFFFF)
-      - border-radius: 20px
-      - box-shadow: 0 1px 8px rgba(40,40,80,0.06)
-      - border: none
+      - border-radius: var(--hs-radius,20px)
+      - box-shadow: var(--hs-shadow,0 1px 8px rgba(40,40,80,0.06))
+      - border: '[[[ return ((s=>s?s.state===''on'':entity.attributes.hvac_action===''heating'')((hass.entities&&(hass.entities[entity.entity_id]||{}).platform===''hive'')?states[''binary_sensor.''+entity.entity_id.split(''.'')[1]+''_state'']:null)) ? ''var(--hs-trim-heat,var(--hs-trim,none))'' : ''var(--hs-trim,none)''; ]]]'
       - padding: 16px 16px 16px 18px
       - color: var(--hs-text,#2F2F33)
       - font-family: Inter, sans-serif
@@ -379,7 +370,7 @@ button_card_templates:
       card:
       - height: 34px
       - border-radius: 20px
-      - background: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':((st===''off''||(entity.entity_id.startsWith(''climate.'')&&!(entity.attributes.hvac_modes||[''off'']).includes(''off'')&&parseFloat(entity.attributes.temperature)<=parseFloat(entity.attributes.min_temp||5)))?''off'':((st===''auto''||st===''eco''||(st===''heat''&&((ha&&entity.entity_id===''climate.hive_thermostat'')||((states[''input_boolean.hive_room_schedule_''+entity.entity_id.split(''.'')[1]]||{}).state===''on''))))?''schedule'':''manual'')); return mode===variables.m?''#4350E6 !important'':''transparent !important''; ]]]'
+      - background: '[[[ const st=entity.state; const hs=states[''input_boolean.hive_ha_schedule'']; const ha=!!(hs&&hs.state===''on''); const hw=states[''input_boolean.hive_ha_water_schedule'']; const wa=entity.entity_id.startsWith(''water_heater.'')&&!!(hw&&hw.state===''on''); const mode=wa?''schedule'':((st===''off''||(entity.entity_id.startsWith(''climate.'')&&!(entity.attributes.hvac_modes||[''off'']).includes(''off'')&&parseFloat(entity.attributes.temperature)<=parseFloat(entity.attributes.min_temp||5)))?''off'':((st===''auto''||st===''eco''||(st===''heat''&&((ha&&entity.entity_id===''climate.hive_thermostat'')||((states[''input_boolean.hive_room_schedule_''+entity.entity_id.split(''.'')[1]]||{}).state===''on''))))?''schedule'':''manual'')); return mode===variables.m?''var(--hs-accent,#4350E6) !important'':''transparent !important''; ]]]'
       - backdrop-filter: none !important
       - -webkit-backdrop-filter: none !important
       - box-shadow: none !important
@@ -431,11 +422,12 @@ button_card_templates:
       card:
       - padding: 22px 4px 8px
       name:
-      - font-family: DM Serif Display, serif
+      - font-family: var(--hs-serif,DM Serif Display, serif)
       - font-size: 31px
       - color: var(--hs-text,#2B2B2E)
       - justify-self: start
       - letter-spacing: -0.3px
+      - font-weight: var(--hs-serif-w,400)
     template: hive_clear
     extra_styles: 'ha-card { background: none !important; background-color: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; } #ripple, ha-ripple, mwc-ripple { display: none !important; } ha-card::before, ha-card::after { content: none !important; display: none !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: none !important; box-shadow: none !important; } :host { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; }'
   hive_pill_link:
@@ -445,7 +437,8 @@ button_card_templates:
       card:
       - height: 38px
       - border-radius: 13px
-      - background: rgba(255,255,255,0.55)
+      - background: var(--hs-pilllink,rgba(255,255,255,0.55))
+      - border: var(--hs-pilllink-border,none)
       grid:
       - grid-template-areas: '"n i"'
       - grid-template-columns: auto auto
@@ -453,10 +446,10 @@ button_card_templates:
       - column-gap: 6px
       icon:
       - width: 20px
-      - color: '#2F2F33'
+      - color: var(--hs-pilllink-text,#2F2F33)
       name:
       - font-size: 16px
-      - color: '#2F2F33'
+      - color: var(--hs-pilllink-text,#2F2F33)
     template: hive_clear
   hive_sched_header:
     custom_fields:
@@ -483,9 +476,7 @@ button_card_templates:
     - climate.hive_thermostat
   hive_sched_list:
     custom_fields:
-      list: '[[[ const names=[''Mon'',''Tue'',''Wed'',''Thu'',''Fri'',''Sat'',''Sun'']; const keys=[''mon'',''tue'',''wed'',''thu'',''fri'',''sat'',''sun'']; let di=names.indexOf(entity.state); if(di<0) di=0; const scheds=Object.keys(states).filter(k=>k.startsWith(''switch.'')).map(k=>states[k]).filter(s=>Array.isArray(s.attributes.tags)&&s.attributes.tags.includes(''hive_heating'')); const covers=(s,k)=>{const w=s.attributes.weekdays||[]; return w.includes(k)||w.includes(''daily'')||(w.includes(''workday'')&&keys.slice(0,5).includes(k))||(w.includes(''weekend'')&&(k===''sat''||k===''sun''));}; const val=(a)=>{ if(!a) return ''off''; const d=a.data||a.service_data||{}; if(d.hvac_mode===''off'') return ''off''; const t=parseFloat(d.temperature); return (isNaN(t)||t<=7)?''off'':t; }; const slots=(i)=>{ const k=keys[(i+7)%7]; const s=scheds.find(x=>x.state!==''off''&&covers(x,k))||scheds.find(x=>covers(x,k)); if(!s) return []; const ts=s.attributes.timeslots||[]; const ac=s.attributes.actions||[];
-        return ts.map((t,j)=>{ const p=String(t).split('' - ''); return {start:p[0].slice(0,5), end:(p[1]||'''').slice(0,5), v:val(ac.length>1?ac[j]:ac[0])}; }).sort((a,b)=>a.start.localeCompare(b.start)); }; let cur=slots(di); const prev=slots(di-1); const next=slots(di+1); if(cur.length>1&&cur[0].start===''00:00''&&prev.length&&prev[prev.length-1].v===cur[0].v) cur=cur.slice(1); if(cur.length){ const L=Object.assign({},cur[cur.length-1]); if((L.end===''00:00''||L.end===''23:59''||L.end==='''')&&next.length&&next[0].start===''00:00''&&next[0].v===L.v){ L.end=`${next[0].end} (${names[(di+1)%7]})`; } cur[cur.length-1]=L; } if(!cur.length) return `<div style=''padding:36px 4px;color:var(--hs-sub,#66666B);font-size:16px;line-height:1.5;text-align:left''>No Home Assistant heating schedule for this day yet.<br>Tap <b>•••</b> to create one.</div>`; return cur.map(s=>{ const on=s.v!==''off''; const c=on?''#E8642E'':''#7B80EA''; const txt=on?`${Number(s.v).toFixed(1)}°`:''Off''; return `<div style=''display:flex;align-items:center;gap:26px;padding:12px
-        0''><div style=''width:56px;height:56px;flex:none;border-radius:50%;border:3px solid ${c};box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:${on?15:17}px;color:var(--hs-text,#2F2F33)''>${txt}</div><div style=''font-size:19px;color:var(--hs-text,#2F2F33)''>${s.start} - ${s.end}</div></div>`; }).join(''''); ]]]'
+      list: '[[[ const names=[''Mon'',''Tue'',''Wed'',''Thu'',''Fri'',''Sat'',''Sun'']; const keys=[''mon'',''tue'',''wed'',''thu'',''fri'',''sat'',''sun'']; let di=names.indexOf(entity.state); if(di<0) di=0; const scheds=Object.keys(states).filter(k=>k.startsWith(''switch.'')).map(k=>states[k]).filter(s=>Array.isArray(s.attributes.tags)&&s.attributes.tags.includes(''hive_heating'')); const covers=(s,k)=>{const w=s.attributes.weekdays||[]; return w.includes(k)||w.includes(''daily'')||(w.includes(''workday'')&&keys.slice(0,5).includes(k))||(w.includes(''weekend'')&&(k===''sat''||k===''sun''));}; const val=(a)=>{ if(!a) return ''off''; const d=a.data||a.service_data||{}; if(d.hvac_mode===''off'') return ''off''; const t=parseFloat(d.temperature); return (isNaN(t)||t<=7)?''off'':t; }; const slots=(i)=>{ const k=keys[(i+7)%7]; const s=scheds.find(x=>x.state!==''off''&&covers(x,k))||scheds.find(x=>covers(x,k)); if(!s) return []; const ts=s.attributes.timeslots||[]; const ac=s.attributes.actions||[]; return ts.map((t,j)=>{ const p=String(t).split('' - ''); return {start:p[0].slice(0,5), end:(p[1]||'''').slice(0,5), v:val(ac.length>1?ac[j]:ac[0])}; }).sort((a,b)=>a.start.localeCompare(b.start)); }; let cur=slots(di); const prev=slots(di-1); const next=slots(di+1); if(cur.length>1&&cur[0].start===''00:00''&&prev.length&&prev[prev.length-1].v===cur[0].v) cur=cur.slice(1); if(cur.length){ const L=Object.assign({},cur[cur.length-1]); if((L.end===''00:00''||L.end===''23:59''||L.end==='''')&&next.length&&next[0].start===''00:00''&&next[0].v===L.v){ L.end=`${next[0].end} (${names[(di+1)%7]})`; } cur[cur.length-1]=L; } if(!cur.length) return `<div style=''padding:36px 4px;color:var(--hs-sub,#66666B);font-size:16px;line-height:1.5;text-align:left''>No Home Assistant heating schedule for this day yet.<br>Tap <b>•••</b> to create one.</div>`; return cur.map(s=>{ const on=s.v!==''off''; const c=on?''#E8642E'':''var(--hs-accent2,#7B80EA)''; const txt=on?`${Number(s.v).toFixed(1)}°`:''Off''; return `<div style=''display:flex;align-items:center;gap:26px;padding:12px 0''><div style=''width:56px;height:56px;flex:none;border-radius:50%;border:3px solid ${c};box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:${on?15:17}px;color:var(--hs-text,#2F2F33)''>${txt}</div><div style=''font-size:19px;color:var(--hs-text,#2F2F33)''>${s.start} - ${s.end}</div></div>`; }).join(''''); ]]]'
     styles:
       card:
       - background: var(--hs-card,#FFFFFF)
@@ -512,10 +503,11 @@ button_card_templates:
       card:
       - padding: 14px 4px 2px
       name:
-      - font-family: DM Serif Display, serif
+      - font-family: var(--hs-serif,DM Serif Display, serif)
       - font-size: 21px
       - color: var(--hs-text,#2B2B2E)
       - justify-self: start
+      - font-weight: var(--hs-serif-w,400)
     extra_styles: 'ha-card { background: none !important; background-color: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; } #ripple, ha-ripple, mwc-ripple { display: none !important; } ha-card::before, ha-card::after { content: none !important; display: none !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: none !important; box-shadow: none !important; } :host { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; }'
   hive_sensor:
     variables:
@@ -549,7 +541,7 @@ button_card_templates:
         - justify-self: start
     custom_fields:
       head: '[[[ return `<div style=''display:flex;align-items:center;gap:10px''><div style=''width:30px;height:30px;border-radius:9px;background:var(--hs-line,#F2F2F5);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''${variables.icon}'' style=''--mdc-icon-size:17px;color:var(--hs-text,#3A3A3E)''></ha-icon></div><div style=''font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left''>${variables.name||entity.attributes.friendly_name}</div></div>`; ]]]'
-      temp: '[[[ const v=parseFloat(entity.state); const hs=variables.humidity?states[variables.humidity]:null; const h=hs?parseFloat(hs.state):NaN; const sub=isNaN(h)?''Actual'':`<ha-icon icon=''mdi:water-percent'' style=''--mdc-icon-size:15px;color:#7B80EA''></ha-icon>${Math.round(h)}% humidity`; return `<div style=''text-align:left''><div style=''font-size:34px;font-weight:500;letter-spacing:-0.8px;line-height:1;color:var(--hs-text,#2F2F33)''>${isNaN(v)?''--'':v.toFixed(1)}°</div><div style=''font-size:13px;color:var(--hs-sub,#55555B);margin-top:6px;display:flex;align-items:center;gap:4px''>${sub}</div></div>`; ]]]'
+      temp: '[[[ const v=parseFloat(entity.state); const hs=variables.humidity?states[variables.humidity]:null; const h=hs?parseFloat(hs.state):NaN; const sub=isNaN(h)?''Actual'':`<ha-icon icon=''mdi:water-percent'' style=''--mdc-icon-size:15px;color:var(--hs-accent2,#7B80EA)''></ha-icon>${Math.round(h)}% humidity`; return `<div style=''text-align:left''><div style=''font-size:34px;font-weight:500;letter-spacing:-0.8px;line-height:1;color:var(--hs-text,#2F2F33)''>${isNaN(v)?''--'':v.toFixed(1)}°</div><div style=''font-size:13px;color:var(--hs-sub,#55555B);margin-top:6px;display:flex;align-items:center;gap:4px''>${sub}</div></div>`; ]]]'
 kiosk_mode:
   hide_header: true
 views:
@@ -582,11 +574,14 @@ views:
         - column-gap: 16px
         - align-items: center
         name:
-        - font-family: DM Serif Display, serif
-        - font-size: 31px
+        - font-family: var(--hs-greet,var(--hs-serif,DM Serif Display, serif))
+        - font-size: var(--hs-greet-size,31px)
         - color: var(--hs-text,#2B2B2E)
         - justify-self: start
-        - letter-spacing: -0.3px
+        - letter-spacing: var(--hs-greet-ls,-0.3px)
+        - font-weight: var(--hs-greet-w,var(--hs-serif-w,400))
+        - white-space: nowrap
+        - min-width: '0'
       template: hive_clear
       triggers_update:
       - sun.sun
@@ -691,8 +686,7 @@ views:
         url: /hive-heating/manage
         icon_selected: mdi:cog
       type: custom:navbar-card
-      styles: "\n.navbar {\n  --navbar-primary-color: #4350E6;\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-text,#2B2B2E) !important;\n  --icon-primary-color: var(--hs-text,#2B2B2E) !important;\n  --mdc-icon-color: var(--hs-text,#2B2B2E);\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n\
-        }\n.navbar .route .button.active {\n  background: var(--hs-line,#E9E9EE) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: #4350E6 !important;\n  --icon-primary-color: #4350E6 !important;\n  --mdc-icon-color: #4350E6;\n}\n.navbar .route .label.active {\n  color: #4350E6 !important;\n}\n"
+      styles: "\n.navbar {\n  --navbar-primary-color: var(--hs-accent,#4350E6);\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --icon-primary-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --mdc-icon-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E));\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n}\n.navbar .route .button.active {\n  background: var(--hs-nav-active,var(--hs-line,#E9E9EE)) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --icon-primary-color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --mdc-icon-color: var(--hs-nav-accent,var(--hs-accent,#4350E6));\n}\n.navbar .route .label.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n}\n"
     type: grid
   title: Home
   type: sections
@@ -1018,10 +1012,11 @@ views:
         - column-gap: 16px
         - align-items: center
         name:
-        - font-family: DM Serif Display, serif
+        - font-family: var(--hs-serif,DM Serif Display, serif)
         - font-size: 28px
         - color: var(--hs-text,#2B2B2E)
         - justify-self: start
+        - font-weight: var(--hs-serif-w,400)
       template: hive_clear
       type: custom:button-card
       extra_styles: 'ha-card { background: none !important; background-color: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; } #ripple, ha-ripple, mwc-ripple { display: none !important; } ha-card::before, ha-card::after { content: none !important; display: none !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: none !important; box-shadow: none !important; } :host { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; }'
@@ -1165,8 +1160,7 @@ views:
         url: /hive-heating/manage
         icon_selected: mdi:cog
       type: custom:navbar-card
-      styles: "\n.navbar {\n  --navbar-primary-color: #4350E6;\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-text,#2B2B2E) !important;\n  --icon-primary-color: var(--hs-text,#2B2B2E) !important;\n  --mdc-icon-color: var(--hs-text,#2B2B2E);\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n\
-        }\n.navbar .route .button.active {\n  background: var(--hs-line,#E9E9EE) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: #4350E6 !important;\n  --icon-primary-color: #4350E6 !important;\n  --mdc-icon-color: #4350E6;\n}\n.navbar .route .label.active {\n  color: #4350E6 !important;\n}\n"
+      styles: "\n.navbar {\n  --navbar-primary-color: var(--hs-accent,#4350E6);\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --icon-primary-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --mdc-icon-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E));\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n}\n.navbar .route .button.active {\n  background: var(--hs-nav-active,var(--hs-line,#E9E9EE)) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --icon-primary-color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --mdc-icon-color: var(--hs-nav-accent,var(--hs-accent,#4350E6));\n}\n.navbar .route .label.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n}\n"
     type: grid
   title: Insights
   type: sections
@@ -1220,7 +1214,7 @@ views:
       grid_options:
         columns: full
       custom_fields:
-        t: '[[[ const m = entity.state; const sub = m === ''Auto'' ? ''Follows each device (phone, tablet) light or dark setting'' : (m === ''Dark'' ? ''Dark background on every screen'' : ''Light background on every screen''); return `<div style=''display:flex;align-items:center;gap:14px;text-align:left''><div style=''width:42px;height:42px;border-radius:50%;background:var(--hs-line,#ECECF0);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''mdi:theme-light-dark'' style=''--mdc-icon-size:22px;color:var(--hs-text,#2B2B2E)''></ha-icon></div><div><div style=''font-size:17px;font-weight:500;color:var(--hs-text,#2B2B2E)''>Appearance</div><div style=''font-size:14px;color:var(--hs-sub,#66666B);margin-top:2px;white-space:normal''>${sub}</div></div></div>`; ]]]'
+        t: '[[[ const m = entity.state; const sub = m === ''Noir'' ? ''Black and gold, light on wall panels'' : m === ''Auto'' ? ''Follows each device (phone, tablet) light or dark setting'' : (m === ''Dark'' ? ''Dark background on every screen'' : ''Light background on every screen''); return `<div style=''display:flex;align-items:center;gap:14px;text-align:left''><div style=''width:42px;height:42px;border-radius:50%;background:var(--hs-line,#ECECF0);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''mdi:theme-light-dark'' style=''--mdc-icon-size:22px;color:var(--hs-text,#2B2B2E)''></ha-icon></div><div><div style=''font-size:17px;font-weight:500;color:var(--hs-text,#2B2B2E)''>Appearance</div><div style=''font-size:14px;color:var(--hs-sub,#66666B);margin-top:2px;white-space:normal''>${sub}</div></div></div>`; ]]]'
         o:
           card:
             type: horizontal-stack
@@ -1245,7 +1239,7 @@ views:
                 - box-shadow: none
                 - border: none
                 - padding: 0 10px
-                - background: '[[[ return entity.state === ''Light'' ? ''#4350E6'' : ''var(--hs-line,#ECECF0)''; ]]]'
+                - background: '[[[ return entity.state === ''Light'' ? ''var(--hs-accent,#4350E6)'' : ''var(--hs-line,#ECECF0)''; ]]]'
                 name:
                 - font-family: Inter, sans-serif
                 - font-size: 15px
@@ -1279,7 +1273,7 @@ views:
                 - box-shadow: none
                 - border: none
                 - padding: 0 10px
-                - background: '[[[ return entity.state === ''Dark'' ? ''#4350E6'' : ''var(--hs-line,#ECECF0)''; ]]]'
+                - background: '[[[ return entity.state === ''Dark'' ? ''var(--hs-accent,#4350E6)'' : ''var(--hs-line,#ECECF0)''; ]]]'
                 name:
                 - font-family: Inter, sans-serif
                 - font-size: 15px
@@ -1313,7 +1307,7 @@ views:
                 - box-shadow: none
                 - border: none
                 - padding: 0 10px
-                - background: '[[[ return entity.state === ''Auto'' ? ''#4350E6'' : ''var(--hs-line,#ECECF0)''; ]]]'
+                - background: '[[[ return entity.state === ''Auto'' ? ''var(--hs-accent,#4350E6)'' : ''var(--hs-line,#ECECF0)''; ]]]'
                 name:
                 - font-family: Inter, sans-serif
                 - font-size: 15px
@@ -1322,6 +1316,40 @@ views:
                 icon:
                 - width: 18px
                 - color: '[[[ return entity.state === ''Auto'' ? ''#FFFFFF'' : ''var(--hs-text,#2B2B2E)''; ]]]'
+                grid:
+                - grid-template-areas: '"i n"'
+                - grid-template-columns: auto auto
+                - justify-content: center
+                - column-gap: 6px
+            - type: custom:button-card
+              entity: input_select.hive_appearance
+              name: Noir
+              icon: mdi:star-four-points-outline
+              show_state: false
+              layout: icon_name
+              tap_action:
+                action: perform-action
+                perform_action: input_select.select_option
+                target:
+                  entity_id: input_select.hive_appearance
+                data:
+                  option: Noir
+              styles:
+                card:
+                - height: 46px
+                - border-radius: 14px
+                - box-shadow: none
+                - border: none
+                - padding: 0 10px
+                - background: '[[[ return entity.state === ''Noir'' ? ''var(--hs-accent,#4350E6)'' : ''var(--hs-line,#ECECF0)''; ]]]'
+                name:
+                - font-family: Inter, sans-serif
+                - font-size: 15px
+                - font-weight: '500'
+                - color: '[[[ return entity.state === ''Noir'' ? ''#FFFFFF'' : ''var(--hs-text,#2B2B2E)''; ]]]'
+                icon:
+                - width: 18px
+                - color: '[[[ return entity.state === ''Noir'' ? ''#FFFFFF'' : ''var(--hs-text,#2B2B2E)''; ]]]'
                 grid:
                 - grid-template-areas: '"i n"'
                 - grid-template-columns: auto auto
@@ -1388,7 +1416,7 @@ views:
 
           else if(st===''heat'' && ha && states[''input_boolean.heating_away_eco_active''] && states[''input_boolean.heating_away_eco_active''].state===''on''){ mode=''Away eco – nobody home''; col=''#2E9E5B''; }
 
-          else if(st===''heat'' && ha){ mode=''Schedule (Home Assistant)''; col=''#4350E6''; }
+          else if(st===''heat'' && ha){ mode=''Schedule (Home Assistant)''; col=''var(--hs-accent,#4350E6)''; }
 
           else if(st===''auto''){ mode="Hive''s own schedule"; col=''#D9342B''; warn=`<div style=''font-size:12px;color:#D9342B;margin-top:4px''>Tap Schedule to hand control back to Home Assistant</div>`; }
 
@@ -1463,9 +1491,7 @@ views:
       - sensor.bedroom_radiator_battery_level
       - sensor.study_radiator_battery
       custom_fields:
-        list: '[[[ const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const items = variables.items || []; let h = `<div style=''display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:6px''><div style=''width:42px;height:42px;border-radius:50%;background:var(--hs-line,#ECECF0);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''mdi:battery-heart-variant'' style=''--mdc-icon-size:22px;color:var(--hs-text,#2B2B2E)''></ha-icon></div><div><div style=''font-size:17px;font-weight:500;color:var(--hs-text,#2B2B2E)''>Batteries</div><div style=''font-size:14px;color:var(--hs-sub,#66666B);margin-top:2px''>Valves and thermostat</div></div></div>`;
-          items.forEach(([n, eid, ov]) => { if (!states[eid]) return; const bid = findBatt(eid, ov); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; const r = isNaN(b) ? null : Math.round(b); const col = r === null ? ''var(--hs-sub,#9A9AA2)'' : (r < 15 ? ''#D9342B'' : (r < 30 ? ''#E8A33A'' : ''#2E9E5B'')); const lvl = r === null ? 0 : Math.min(100, Math.max(10, Math.round(r / 10) * 10)); const ic = r === null ? ''mdi:battery-unknown'' : (r < 15 ? ''mdi:battery-alert-variant-outline'' : (lvl === 100 ? ''mdi:battery'' : ''mdi:battery-'' + lvl)); h += `<div style=''display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--hs-line,#EFEFF3)''><ha-icon icon=''${ic}'' style=''--mdc-icon-size:22px;color:${col};flex:none''></ha-icon><div style=''flex:1;min-width:0;text-align:left;font-size:15px;color:var(--hs-text,#2B2B2E)''>${n}</div><div style=''width:90px;height:6px;border-radius:3px;background:var(--hs-line,#ECECF0);overflow:hidden;flex:none''><div
-          style=''height:100%;width:${r === null ? 0 : r}%;background:${col}''></div></div><div style=''width:44px;text-align:right;font-size:15px;font-weight:500;color:${col}''>${r === null ? ''--'' : r + ''%''}</div></div>`; }); return h; ]]]'
+        list: '[[[ const findBatt = (eid, override) => { if (override) return override; const e = hass.entities && hass.entities[eid]; if (!e || !e.device_id) return null; for (const x of Object.values(hass.entities)) { if (x.device_id === e.device_id) { const s = states[x.entity_id]; if (s && s.attributes.device_class === ''battery'' && !isNaN(parseFloat(s.state))) return x.entity_id; } } return null; }; const items = variables.items || []; let h = `<div style=''display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:6px''><div style=''width:42px;height:42px;border-radius:50%;background:var(--hs-line,#ECECF0);display:flex;align-items:center;justify-content:center;flex:none''><ha-icon icon=''mdi:battery-heart-variant'' style=''--mdc-icon-size:22px;color:var(--hs-text,#2B2B2E)''></ha-icon></div><div><div style=''font-size:17px;font-weight:500;color:var(--hs-text,#2B2B2E)''>Batteries</div><div style=''font-size:14px;color:var(--hs-sub,#66666B);margin-top:2px''>Valves and thermostat</div></div></div>`; items.forEach(([n, eid, ov]) => { if (!states[eid]) return; const bid = findBatt(eid, ov); const b = bid && states[bid] ? parseFloat(states[bid].state) : NaN; const r = isNaN(b) ? null : Math.round(b); const col = r === null ? ''var(--hs-sub,#9A9AA2)'' : (r < 15 ? ''#D9342B'' : (r < 30 ? ''#E8A33A'' : ''#2E9E5B'')); const lvl = r === null ? 0 : Math.min(100, Math.max(10, Math.round(r / 10) * 10)); const ic = r === null ? ''mdi:battery-unknown'' : (r < 15 ? ''mdi:battery-alert-variant-outline'' : (lvl === 100 ? ''mdi:battery'' : ''mdi:battery-'' + lvl)); h += `<div style=''display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--hs-line,#EFEFF3)''><ha-icon icon=''${ic}'' style=''--mdc-icon-size:22px;color:${col};flex:none''></ha-icon><div style=''flex:1;min-width:0;text-align:left;font-size:15px;color:var(--hs-text,#2B2B2E)''>${n}</div><div style=''width:90px;height:6px;border-radius:3px;background:var(--hs-line,#ECECF0);overflow:hidden;flex:none''><div style=''height:100%;width:${r === null ? 0 : r}%;background:${col}''></div></div><div style=''width:44px;text-align:right;font-size:15px;font-weight:500;color:${col}''>${r === null ? ''--'' : r + ''%''}</div></div>`; }); return h; ]]]'
       styles:
         card:
         - background: var(--hs-card,#FFFFFF)
@@ -1543,8 +1569,7 @@ views:
         url: /hive-heating/manage
         icon_selected: mdi:cog
       type: custom:navbar-card
-      styles: "\n.navbar {\n  --navbar-primary-color: #4350E6;\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-text,#2B2B2E) !important;\n  --icon-primary-color: var(--hs-text,#2B2B2E) !important;\n  --mdc-icon-color: var(--hs-text,#2B2B2E);\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n\
-        }\n.navbar .route .button.active {\n  background: var(--hs-line,#E9E9EE) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: #4350E6 !important;\n  --icon-primary-color: #4350E6 !important;\n  --mdc-icon-color: #4350E6;\n}\n.navbar .route .label.active {\n  color: #4350E6 !important;\n}\n"
+      styles: "\n.navbar {\n  --navbar-primary-color: var(--hs-accent,#4350E6);\n  --navbar-background-color: var(--hs-nav,rgba(255,255,255,0.97));\n  --navbar-border-radius: 34px;\n  --navbar-route-icon-size: 26px;\n  --navbar-box-shadow-mobile-floating: 0 4px 18px rgba(30,30,60,0.12);\n  --navbar-box-shadow-desktop: 0 4px 18px rgba(30,30,60,0.12);\n}\n.navbar-card {\n  background: var(--hs-nav,rgba(255,255,255,0.97)) !important;\n  border: 1px solid var(--hs-line,#E3E3E8) !important;\n  border-radius: 34px !important;\n}\n.navbar .route,\n.navbar .route .button,\n.navbar .route .icon,\n.navbar .route .button .icon {\n  opacity: 1 !important;\n  filter: none !important;\n}\n.navbar .route .icon,\n.navbar .route .button .icon {\n  color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --icon-primary-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E)) !important;\n  --mdc-icon-color: var(--hs-nav-icon,var(--hs-text,#2B2B2E));\n}\n.navbar .route .label {\n  color: var(--hs-text,#2B2B2E) !important;\n  opacity: 1 !important;\n  font-family: Inter, sans-serif;\n}\n.navbar .route .button.active {\n  background: var(--hs-nav-active,var(--hs-line,#E9E9EE)) !important;\n}\n.navbar .route .button.active .icon,\n.navbar .route .icon.active,\n.navbar .route .button .icon.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --icon-primary-color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n  --mdc-icon-color: var(--hs-nav-accent,var(--hs-accent,#4350E6));\n}\n.navbar .route .label.active {\n  color: var(--hs-nav-accent,var(--hs-accent,#4350E6)) !important;\n}\n"
     type: grid
   title: Manage
   type: sections
