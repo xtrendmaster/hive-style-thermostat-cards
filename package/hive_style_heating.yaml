@@ -22,6 +22,16 @@ input_boolean:
   heating_away_mode:
     name: Away / holiday mode
     icon: mdi:airplane
+  # Presence: lower the heating when nobody's home, put it back when someone comes home
+  hive_eco_when_nobody_home:
+    name: Lower to 16° when nobody's home (30 min)
+    icon: mdi:home-export-outline
+  hive_warm_up_approaching:
+    name: Warm up when approaching home
+    icon: mdi:home-import-outline
+  hive_away_eco_active:
+    name: Heating lowered - nobody home
+    icon: mdi:leaf
   hive_ha_water_schedule:
     name: Home Assistant runs the hot water schedule
     icon: mdi:water-boiler-auto
@@ -510,3 +520,102 @@ automation:
           - action: script.hive_rooms_follow_schedule
             data:
               only: "climate.{{ trigger.event.data.entity_id.split('.')[1][6:] }}"
+  - id: hive_style_presence_eco
+    alias: Hive-style - lower the heating when nobody's home
+    description: >-
+      When nobody has been home for 30 minutes, holds the main thermostat at 16° at most
+      (it only lowers, Off stays off; rooms on Schedule follow it). When someone comes home,
+      or enters the "Approaching home" zone with warm-up on, the current schedule slot is put back.
+      Needs Home Assistant to run the heating schedule. Turn it on or off on the Manage page.
+    mode: queued
+    max: 10
+    triggers:
+      - trigger: numeric_state
+        entity_id: zone.home
+        below: 1
+        for: {minutes: 30}
+        id: away
+      - trigger: state
+        entity_id: climate.hive_thermostat
+        attribute: temperature
+        id: enforce
+      - trigger: numeric_state
+        entity_id: zone.home
+        above: 0
+        id: home
+      - trigger: numeric_state
+        entity_id: zone.approaching_home
+        above: 0
+        id: approaching
+    actions:
+      - choose:
+          - alias: Nobody home for 30 min - lower to 16
+            conditions:
+              - condition: trigger
+                id: away
+              - condition: state
+                entity_id: input_boolean.hive_eco_when_nobody_home
+                state: "on"
+              - condition: state
+                entity_id: input_boolean.hive_ha_schedule
+                state: "on"
+              - condition: state
+                entity_id: climate.hive_thermostat
+                state: heat
+              - condition: numeric_state
+                entity_id: zone.home
+                below: 1
+            sequence:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.hive_away_eco_active
+              - if:
+                  - condition: numeric_state
+                    entity_id: climate.hive_thermostat
+                    attribute: temperature
+                    above: 16
+                then:
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: climate.hive_thermostat
+                    data:
+                      temperature: 16
+          - alias: The schedule raised the target while nobody's home - hold at 16
+            conditions:
+              - condition: trigger
+                id: enforce
+              - condition: state
+                entity_id: input_boolean.hive_away_eco_active
+                state: "on"
+              - condition: numeric_state
+                entity_id: climate.hive_thermostat
+                attribute: temperature
+                above: 16
+              - "{% set e = 'climate.hive_thermostat' %}{{ not is_state_attr(e, 'preset_mode', 'boost') and not is_state('timer.boost_' ~ e.split('.')[1], 'active') }}"
+            sequence:
+              - action: climate.set_temperature
+                target:
+                  entity_id: climate.hive_thermostat
+                data:
+                  temperature: 16
+          - alias: Someone home, or approaching with warm-up on - put the schedule back
+            conditions:
+              - condition: state
+                entity_id: input_boolean.hive_away_eco_active
+                state: "on"
+              - condition: or
+                conditions:
+                  - condition: trigger
+                    id: home
+                  - condition: and
+                    conditions:
+                      - condition: trigger
+                        id: approaching
+                      - condition: state
+                        entity_id: input_boolean.hive_warm_up_approaching
+                        state: "on"
+            sequence:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.hive_away_eco_active
+              - action: script.hive_apply_schedule_now
