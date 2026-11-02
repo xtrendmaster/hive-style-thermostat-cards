@@ -44,7 +44,7 @@ input_select:
   hive_appearance:
     name: Heating dashboard appearance
     icon: mdi:theme-light-dark
-    options: [Light, Dark, Auto]
+    options: [Light, Dark, Auto, Noir]
 
 timer:
   # Boost timer for a non-Hive radiator valve (Sonoff, Aqara, Tuya...).
