@@ -1194,6 +1194,20 @@ views:
       type: tile
       card_mod:
         style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); --state-inactive-color: var(--hs-sub,#9A9AA2); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+    - entity: input_boolean.hive_eco_when_nobody_home
+      grid_options:
+        columns: full
+      name: Lower to 16° when nobody's home (30 min)
+      type: tile
+      card_mod:
+        style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); --state-inactive-color: var(--hs-sub,#9A9AA2); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+    - entity: input_boolean.hive_warm_up_approaching
+      grid_options:
+        columns: full
+      name: Warm up when approaching home
+      type: tile
+      card_mod:
+        style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); --state-inactive-color: var(--hs-sub,#9A9AA2); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
     - type: custom:button-card
       entity: input_select.hive_appearance
       show_name: false
