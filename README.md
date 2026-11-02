@@ -24,7 +24,7 @@ A clean, phone-first heating dashboard for Home Assistant, inspired by the look 
 - **Light, dark or automatic** appearance, switchable on the Manage page.
 - **Valve batteries** at a glance on the Manage page, plus a small warning on a radiator's page when its battery is low.
 - **Insights**: temperature charts with apexcharts-card.
-- **Manage**: one place for modes, away mode and device health.
+- **Manage**: one place for modes, away mode, lowering the heating when nobody's home, and device health.
 - **Gentle on Hive's servers**: the wheel and arrows wait until you've finished, then send one change (never more than one every 10 seconds per thermostat). A small "Setting 19.5°" bubble shows the change is on its way.
 
 ## Requirements
@@ -142,6 +142,7 @@ The free electricity and Saving Session entities are off by default in the integ
 
 ## Changelog
 
+- **1.6.2-beta.3**: **Copy to all days**: an *All days* option when copying a day's schedule (idea from clairec707). **Lower the heating when nobody's home**: two new switches on Manage. *Lower to 16° when nobody's home* holds the heating at 16° once everyone has been out for 30 minutes and puts the schedule back as soon as someone comes home. *Warm up when approaching home* puts it back early when someone enters a zone called **Approaching home** (create it in Settings → Areas, labels & zones → Zones, then press Update). Uses the people in Home Assistant (phones with the companion app) and needs Home Assistant running the schedule. Fix: the ticks on the copy screen were cut off on narrow phones. Press **Update** on the setup page.
 - **1.6.2-beta.2**: Name your main thermostat on the setup page (e.g. "Hallway") instead of "Thermostat". The schedule clock on the cards is **green** when a room follows the house schedule and plain when it has its own times today. The setup page marks air con and unavailable devices so they aren't added as radiators by mistake. Fix: typing a Zigbee2MQTT topic on the setup page. Press **Update** on the setup page.
 - **1.6.2-beta.1**: **Per-room schedules**: every radiator page has **View Schedule**, so a room can have its own times (e.g. only the bedroom warm at night); days you don't change follow the house schedule. **Octopus Energy**: the setup page finds the integration and adds the free electricity / Saving Session banner, spend cards and optional phone alerts. Fix: rooms on Schedule could miss the house schedule's change for the first minute of a slot. Press **Update** on the setup page.
 - **1.6.1**: the heating flame now shows on Hive radiator valves straight away. Hive valves are slow to report "heating" to Home Assistant, so the cards also read the valve's State sensor. Rooms on Schedule now read the schedule itself, so they get the right temperature even while the main thermostat is boosting. Valves with no Off mode (like a Hive valve paired directly to Zigbee2MQTT) now go to frost protection when you tap Off. A small clock on each card shows which rooms are on Schedule (idea from Matt Sol). Fixes a Spook warning about `binary_sensor.none` on setups without a boost sensor. Press **Update** on the setup page.
