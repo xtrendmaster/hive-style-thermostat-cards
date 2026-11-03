@@ -12,6 +12,8 @@
 #   binary_sensor.hive_thermostat_boost  -> Hive "Boost" binary sensor (heating)
 #   binary_sensor.hive_hot_water_boost   -> Hive "Hotwater Boost" binary sensor
 #   timer.boost_study_radiator           -> one timer per NON-Hive valve: timer.boost_<valve object id>
+#     (optional for Hive devices too - timer.boost_hive_thermostat, timer.boost_water_hive_hot_water, ... -
+#      used when the Hive integration has no boost actions; the setup page creates them for you)
 #   input_boolean.hive_room_schedule_study_radiator -> one per radiator: hive_room_schedule_<valve object id>
 #     (on = that room is on Schedule and follows the main heating schedule's temperature)
 
@@ -62,7 +64,8 @@ script:
       Starts a boost, or cancels it if one is running. Hive thermostat and hot water use
       Hive's own boost. Hive radiator valves use Hive's boost but are cancelled by restoring a
       snapshot (the Hive integration's boost_heating_off fails on TRVs). Other valves are boosted
-      by Home Assistant with timer.boost_<object id>.
+      by Home Assistant with timer.boost_<object id>. When the Hive integration has no boost actions
+      (the dashboard sends ha_boost: true), Hive devices are boosted by Home Assistant the same way.
     icon: mdi:bullseye
     mode: parallel
     fields:
@@ -82,24 +85,32 @@ script:
         default: 21
         selector:
           number: {min: 7, max: 30, step: 0.5}
+      ha_boost:
+        name: Home Assistant boost
+        description: Boost with a Home Assistant timer even on Hive devices (for when Hive's boost actions are missing).
+        default: false
+        selector:
+          boolean: {}
     sequence:
       - variables:
           temp: "{{ temperature | default(21) | float }}"
           period: "{{ '%02d:%02d:00' % ((minutes | default(60) | int) // 60, (minutes | default(60) | int) % 60) }}"
           is_water: "{{ entity_id.startswith('water_heater.') }}"
           is_main: "{{ entity_id == 'climate.hive_thermostat' }}"
-          is_hive: "{{ entity_id.startswith('water_heater.') or entity_id in integration_entities('hive') }}"
-          boost_timer: "timer.boost_{{ entity_id.split('.')[1] }}"
-          restore_scene: "scene.hive_boost_{{ entity_id.split('.')[1] }}"
-          restore_scene_id: "hive_boost_{{ entity_id.split('.')[1] }}"
+          is_hive: "{{ (entity_id.startswith('water_heater.') or entity_id in integration_entities('hive')) and not (ha_boost | default(false) | bool) }}"
+          key: "{{ ('water_' if entity_id.startswith('water_heater.') else '') ~ entity_id.split('.')[1] }}"
+          boost_timer: "timer.boost_{{ key }}"
+          restore_scene: "scene.hive_boost_{{ key }}"
+          restore_scene_id: "hive_boost_{{ key }}"
           boosting: >-
-            {% if entity_id == 'climate.hive_thermostat' %}{{ is_state('binary_sensor.hive_thermostat_boost', 'on') }}
+            {% if is_state(boost_timer, 'active') %}true
+            {% elif entity_id == 'climate.hive_thermostat' %}{{ is_state('binary_sensor.hive_thermostat_boost', 'on') }}
             {% elif entity_id == 'water_heater.hive_hot_water' %}{{ is_state('binary_sensor.hive_hot_water_boost', 'on') }}
             {% elif entity_id in integration_entities('hive') %}{{ is_state_attr(entity_id, 'preset_mode', 'boost') }}
             {% else %}{{ is_state('timer.boost_' ~ entity_id.split('.')[1], 'active') }}{% endif %}
       - choose:
           - alias: Hot water
-            conditions: "{{ is_water }}"
+            conditions: "{{ is_water and is_hive }}"
             sequence:
               - action: hive.boost_hot_water
                 data:
@@ -107,7 +118,7 @@ script:
                   time_period: "{{ period }}"
                   on_off: "{{ 'off' if boosting else 'on' }}"
           - alias: Main thermostat boosting - cancel
-            conditions: "{{ boosting and is_main }}"
+            conditions: "{{ boosting and is_main and is_hive }}"
             sequence:
               - action: hive.boost_heating_off
                 data:
@@ -124,6 +135,14 @@ script:
                     target:
                       entity_id: "{{ restore_scene }}"
                 else:
+                  - if: "{{ is_water }}"
+                    then:
+                      - action: water_heater.set_operation_mode
+                        target:
+                          entity_id: "{{ entity_id }}"
+                        data:
+                          operation_mode: "off"
+                      - stop: Hot water boost cancelled
                   - action: climate.set_hvac_mode
                     target:
                       entity_id: "{{ entity_id }}"
@@ -150,16 +169,24 @@ script:
                 data:
                   scene_id: "{{ restore_scene_id }}"
                   snapshot_entities: ["{{ entity_id }}"]
-              - action: climate.set_hvac_mode
-                target:
-                  entity_id: "{{ entity_id }}"
-                data:
-                  hvac_mode: heat
-              - action: climate.set_temperature
-                target:
-                  entity_id: "{{ entity_id }}"
-                data:
-                  temperature: "{{ temp }}"
+              - if: "{{ is_water }}"
+                then:
+                  - action: water_heater.set_operation_mode
+                    target:
+                      entity_id: "{{ entity_id }}"
+                    data:
+                      operation_mode: "on"
+                else:
+                  - action: climate.set_hvac_mode
+                    target:
+                      entity_id: "{{ entity_id }}"
+                    data:
+                      hvac_mode: heat
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ entity_id }}"
+                    data:
+                      temperature: "{{ temp }}"
               - action: timer.start
                 target:
                   entity_id: "{{ boost_timer }}"
