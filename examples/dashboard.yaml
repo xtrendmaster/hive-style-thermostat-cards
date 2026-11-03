@@ -92,7 +92,7 @@ button_card_templates:
     template: hive_clear
   hive_boost_big:
     icon: mdi:bullseye
-    name: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''Boosting · tap to stop'':''Boost''; ]]]'
+    name: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+(eid.startsWith(''water_heater.'')?''water_'':'''')+eid.split(''.'')[1]]; const boost=!!(tm&&tm.state===''active'')||(bs?!!(states[bs]&&states[bs].state===''on''):entity.attributes.preset_mode===''boost''); return boost?''Boosting · tap to stop'':''Boost''; ]]]'
     show_icon: true
     show_name: true
     styles:
@@ -131,7 +131,7 @@ button_card_templates:
   hive_boost_pill:
     icon: mdi:bullseye
     layout: icon_name
-    name: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''Boosting'':''Boost''; ]]]'
+    name: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+(eid.startsWith(''water_heater.'')?''water_'':'''')+eid.split(''.'')[1]]; const boost=!!(tm&&tm.state===''active'')||(bs?!!(states[bs]&&states[bs].state===''on''):entity.attributes.preset_mode===''boost''); return boost?''Boosting'':''Boost''; ]]]'
     show_icon: true
     show_name: true
     styles:
@@ -140,7 +140,7 @@ button_card_templates:
       - height: 44px
       - border-radius: 14px
       - padding: 0 12px
-      - background: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''var(--hs-accent,#4350E6)'':''var(--hs-boost-bg,var(--hs-pill,#EEF0FD))''; ]]]'
+      - background: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+(eid.startsWith(''water_heater.'')?''water_'':'''')+eid.split(''.'')[1]]; const boost=!!(tm&&tm.state===''active'')||(bs?!!(states[bs]&&states[bs].state===''on''):entity.attributes.preset_mode===''boost''); return boost?''var(--hs-accent,#4350E6)'':''var(--hs-boost-bg,var(--hs-pill,#EEF0FD))''; ]]]'
       - border: var(--hs-boost-border,none)
       grid:
       - grid-template-columns: auto auto
@@ -148,10 +148,10 @@ button_card_templates:
       - column-gap: 8px
       icon:
       - width: 22px
-      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
+      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+(eid.startsWith(''water_heater.'')?''water_'':'''')+eid.split(''.'')[1]]; const boost=!!(tm&&tm.state===''active'')||(bs?!!(states[bs]&&states[bs].state===''on''):entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
       name:
       - font-size: 17px
-      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+eid.split(''.'')[1]]; const boost=bs?!!(states[bs]&&states[bs].state===''on''):(tm?tm.state===''active'':entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
+      - color: '[[[ const eid=entity.entity_id; const bs=eid===''climate.hive_thermostat''?''binary_sensor.hive_thermostat_boost'':(eid===''water_heater.hive_hot_water''?''binary_sensor.hive_hot_water_boost'':''''); const tm=states[''timer.boost_''+(eid.startsWith(''water_heater.'')?''water_'':'''')+eid.split(''.'')[1]]; const boost=!!(tm&&tm.state===''active'')||(bs?!!(states[bs]&&states[bs].state===''on''):entity.attributes.preset_mode===''boost''); return boost?''#FFFFFF'':''var(--hs-boost-text,var(--hs-accent,#4350E6))''; ]]]'
     tap_action:
       action: fire-dom-event
       hive_boost:
