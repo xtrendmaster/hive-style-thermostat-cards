@@ -42,6 +42,16 @@ input_boolean:
     name: Study radiator follows the heating schedule
     icon: mdi:calendar-sync
 
+input_number:
+  hive_away_temperature:
+    name: Away / holiday temperature
+    icon: mdi:snowflake-thermometer
+    min: 7
+    max: 18
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: slider
+
 input_select:
   hive_appearance:
     name: Heating dashboard appearance
@@ -85,6 +95,12 @@ script:
         default: 21
         selector:
           number: {min: 7, max: 30, step: 0.5}
+      cancel_only:
+        name: Only cancel
+        description: Cancel a running boost, but never start one (used by Away mode).
+        default: false
+        selector:
+          boolean: {}
       ha_boost:
         name: Home Assistant boost
         description: Boost with a Home Assistant timer even on Hive devices (for when Hive's boost actions are missing).
@@ -108,6 +124,9 @@ script:
             {% elif entity_id == 'water_heater.hive_hot_water' %}{{ is_state('binary_sensor.hive_hot_water_boost', 'on') }}
             {% elif entity_id in integration_entities('hive') %}{{ is_state_attr(entity_id, 'preset_mode', 'boost') }}
             {% else %}{{ is_state('timer.boost_' ~ entity_id.split('.')[1], 'active') }}{% endif %}
+      - if: "{{ (cancel_only | default(false) | bool) and not (boosting | bool) }}"
+        then:
+          - stop: Nothing to cancel
       - choose:
           - alias: Hot water
             conditions: "{{ is_water and is_hive }}"
@@ -357,6 +376,10 @@ script:
     icon: mdi:calendar-sync
     mode: single
     sequence:
+      - alias: Not while Away / holiday mode is on
+        condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
       - condition: state
         entity_id: input_boolean.hive_ha_schedule
         state: "on"
@@ -401,6 +424,10 @@ script:
         selector:
           boolean:
     sequence:
+      - alias: Not while Away / holiday mode is on
+        condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
       - condition: state
         entity_id: input_boolean.hive_ha_schedule
         state: "on"
@@ -465,6 +492,10 @@ script:
     icon: mdi:water-boiler-auto
     mode: single
     sequence:
+      - alias: Not while Away / holiday mode is on
+        condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
       - condition: state
         entity_id: input_boolean.hive_ha_water_schedule
         state: "on"
@@ -492,6 +523,10 @@ script:
     icon: mdi:skip-next
     mode: single
     sequence:
+      - alias: Not while Away / holiday mode is on
+        condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
       - condition: state
         entity_id: input_boolean.hive_ha_schedule
         state: "on"
@@ -556,6 +591,11 @@ automation:
       Needs Home Assistant to run the heating schedule. Turn it on or off on the Manage page.
     mode: queued
     max: 10
+    conditions:
+      - alias: Away / holiday mode takes over while it's on
+        condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
     triggers:
       - trigger: numeric_state
         entity_id: zone.home
@@ -646,3 +686,124 @@ automation:
                 target:
                   entity_id: input_boolean.hive_away_eco_active
               - action: script.hive_apply_schedule_now
+  - id: hive_style_away_mode
+    alias: Hive-style - Away / holiday mode
+    description: >-
+      Away on: saves every radiator, the thermostat and the hot water, cancels running boosts,
+      sets the thermostat and every radiator to the away temperature and turns the hot water off.
+      While away, schedules are paused and anything that raises a temperature is put back down
+      (a boost you start yourself is left alone until it ends). Away off: puts Manual rooms back
+      the way they were and re-applies the current schedule slots.
+    mode: queued
+    max: 5
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.heating_away_mode
+        to: "on"
+        id: "on"
+      - trigger: state
+        entity_id: input_boolean.heating_away_mode
+        to: "off"
+        from: "on"
+        id: "off"
+      - trigger: state
+        entity_id: climate.hive_thermostat
+        attribute: temperature
+        id: enforce
+      - trigger: state
+        entity_id: input_number.hive_away_temperature
+        id: enforce
+      - trigger: time_pattern
+        minutes: /2
+        id: enforce
+      - trigger: homeassistant
+        event: start
+        id: enforce
+    variables:
+      main: climate.hive_thermostat
+      water: water_heater.hive_hot_water
+      main_boost: binary_sensor.hive_thermostat_boost
+      water_boost: binary_sensor.hive_hot_water_boost
+      away_t: "{{ states('input_number.hive_away_temperature') | float(12) }}"
+      devices: >-
+        {{ [main] + (states.input_boolean | map(attribute='object_id') | select('match', '^hive_room_schedule_')
+           | map('regex_replace', '^hive_room_schedule_', 'climate.') | select('has_value') | list) }}
+    actions:
+      - choose:
+          - alias: Away switched on - cancel boosts, then save everything
+            conditions:
+              - condition: trigger
+                id: "on"
+            sequence:
+              - repeat:
+                  for_each: "{{ devices + ([water] if has_value(water) else []) }}"
+                  sequence:
+                    - action: script.hive_boost
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                        cancel_only: true
+                        ha_boost: "{{ is_state('timer.boost_' ~ ('water_' if repeat.item.startswith('water_heater.') else '') ~ repeat.item.split('.')[1], 'active') }}"
+                      continue_on_error: true
+              - delay:
+                  seconds: 8
+              - action: scene.create
+                data:
+                  scene_id: hive_away_restore
+                  snapshot_entities: >-
+                    {{ devices + ([water] if has_value(water) else []) }}
+          - alias: Away switched off - put Manual rooms back, re-apply the schedules
+            conditions:
+              - condition: trigger
+                id: "off"
+            sequence:
+              - action: scene.turn_on
+                target:
+                  entity_id: scene.hive_away_restore
+                continue_on_error: true
+              - delay:
+                  seconds: 5
+              - action: script.hive_apply_schedule_now
+                continue_on_error: true
+              - action: script.hive_rooms_follow_schedule
+                data:
+                  include_own: true
+                continue_on_error: true
+              - alias: Away - hot water back on its schedule
+                action: script.hive_apply_water_schedule_now
+                continue_on_error: true
+              - stop: Away mode ended
+      - condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "on"
+      - alias: Hold every radiator and the thermostat at the away temperature
+        repeat:
+          for_each: >-
+            {% set ns = namespace(l=[]) %}
+            {% for e in devices %}
+              {% set o = e.split('.')[1] %}
+              {% set t = state_attr(e, 'temperature') %}
+              {% set boosting = is_state_attr(e, 'preset_mode', 'boost') or is_state('timer.boost_' ~ o, 'active')
+                 or (e == main and is_state(main_boost, 'on')) %}
+              {% if states(e) not in ['off', 'unavailable', 'unknown'] and not boosting
+                 and (t is none or (t | float(0) - away_t) | abs > 0.1) %}
+                {% set ns.l = ns.l + [e] %}
+              {% endif %}
+            {% endfor %}{{ ns.l }}
+          sequence:
+            - action: climate.set_temperature
+              target:
+                entity_id: "{{ repeat.item }}"
+              data:
+                temperature: "{{ [[away_t, state_attr(repeat.item, 'min_temp') | float(5)] | max, state_attr(repeat.item, 'max_temp') | float(32)] | min }}"
+              continue_on_error: true
+            - delay:
+                seconds: "{{ 4 if repeat.item in integration_entities('hive') else 0 }}"
+      - alias: Away - hot water off
+        if: "{{ has_value(water) and states(water) != 'off' and not is_state(water_boost, 'on') and not is_state('timer.boost_water_' ~ water.split('.')[1], 'active') }}"
+        then:
+          - action: water_heater.set_operation_mode
+            target:
+              entity_id: "{{ water }}"
+            data:
+              operation_mode: "off"
+            continue_on_error: true
