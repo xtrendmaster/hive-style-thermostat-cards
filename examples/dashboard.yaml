@@ -587,6 +587,42 @@ views:
       - sun.sun
       type: custom:button-card
       extra_styles: 'ha-card { background: none !important; background-color: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; } #ripple, ha-ripple, mwc-ripple { display: none !important; } ha-card::before, ha-card::after { content: none !important; display: none !important; background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: none !important; box-shadow: none !important; } :host { background: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; border: none !important; }'
+    - type: custom:button-card
+      template: hive_clear
+      entity: input_boolean.heating_away_mode
+      show_icon: true
+      icon: mdi:airplane
+      show_name: true
+      name: '[[[ const t=(states[''input_number.hive_away_temperature'']||{}).state; return `Away mode is on · rooms held at ${t||''–''}°` + (states[''water_heater.hive_hot_water''] ? '', hot water off'' : ''''); ]]]'
+      tap_action:
+        action: none
+      visibility:
+      - condition: state
+        entity: input_boolean.heating_away_mode
+        state: 'on'
+      grid_options:
+        columns: full
+      styles:
+        card:
+        - padding: 12px 16px
+        - border-radius: 16px
+        - background: var(--hs-card,#FFFFFF)
+        - border: 1px solid var(--hs-accent,#4350E6)
+        grid:
+        - grid-template-areas: '"i n"'
+        - grid-template-columns: auto 1fr
+        - column-gap: 10px
+        - align-items: center
+        icon:
+        - width: 20px
+        - color: var(--hs-accent,#4350E6)
+        name:
+        - font-size: 15px
+        - font-weight: '500'
+        - color: var(--hs-text,#2B2B2E)
+        - justify-self: start
+        - white-space: normal
+        - text-align: left
     - custom_fields:
         boost:
           card:
@@ -1182,12 +1218,20 @@ views:
       card_mod:
         style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); --state-inactive-color: var(--hs-sub,#9A9AA2); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
     - entity: input_boolean.heating_away_mode
-      grid_options:
+      grid_options: &id001
         columns: full
       name: Away / holiday mode
       type: tile
-      card_mod:
+      card_mod: &id002
         style: 'ha-card { --primary-text-color: var(--hs-text,#2B2B2E); --secondary-text-color: var(--hs-sub,#66666B); --card-background-color: var(--hs-card,#FFFFFF); --ha-card-background: var(--hs-card,#FFFFFF); --state-inactive-color: var(--hs-sub,#9A9AA2); background: var(--hs-card,#FFFFFF) !important; color: var(--hs-text,#2B2B2E) !important; border: none !important; border-radius: 20px !important; box-shadow: 0 1px 8px rgba(40,40,80,0.06) !important; font-family: Inter, sans-serif; }'
+    - entity: input_number.hive_away_temperature
+      grid_options: *id001
+      name: Away / holiday temperature
+      type: tile
+      card_mod: *id002
+      features:
+      - type: numeric-input
+        style: buttons
     - entity: input_boolean.hive_eco_when_nobody_home
       grid_options:
         columns: full
