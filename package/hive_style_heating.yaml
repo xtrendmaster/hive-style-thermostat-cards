@@ -548,18 +548,33 @@ script:
 automation:
   - id: hive_style_rooms_follow_schedule
     alias: Hive-style - rooms on Schedule follow the heating schedule
-    description: When the main heating schedule changes temperature, rooms on Schedule follow it.
+    description: >-
+      When the main heating schedule changes temperature, rooms on Schedule follow it. Also runs every
+      time something asks the main thermostat for a temperature (a schedule slot starting), even when
+      the thermostat is already at that temperature - e.g. while a room is calling the boiler - so a
+      schedule change is never missed.
     mode: restart
     triggers:
       - trigger: state
         entity_id: climate.hive_thermostat
         attribute: temperature
-        for: {seconds: 15}
       - trigger: state
         entity_id: input_boolean.hive_ha_schedule
         to: "on"
-        for: {seconds: 15}
+      - alias: A schedule slot (or anything else) set the main thermostat, even to the same temperature
+        trigger: event
+        event_type: call_service
+        event_data:
+          domain: climate
+          service: set_temperature
+    conditions:
+      - condition: template
+        value_template: >-
+          {% if trigger.platform != 'event' %}true{% else %}
+          {%- set e = trigger.event.data.get('service_data', {}).get('entity_id', []) -%}
+          {{ 'climate.hive_thermostat' in (e if e is list else [e]) }}{% endif %}
     actions:
+      - delay: {seconds: 15}
       - action: script.hive_rooms_follow_schedule
   - id: hive_style_end_valve_boost
     alias: Hive-style - end Home Assistant boost on non-Hive valves
