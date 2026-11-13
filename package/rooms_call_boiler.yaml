@@ -1,0 +1,230 @@
+# Hive-style heating - radiators call the boiler
+#
+# Installed for you by the setup page (tick "Radiators can turn the boiler on"). This file is the
+# reference / manual-install version.
+#
+# Problem it solves: with one main thermostat (Hive or similar), boosting a single radiator valve
+# does nothing when the heating is off on the schedule - the valve opens but the boiler never fires.
+#
+# What it does: when a radiator valve is BOOSTED and the main thermostat is not heating, it raises
+# the main thermostat just enough to fire the boiler (0.5 deg above its target, or 1 deg above the
+# current reading). When no room needs heat any more, it puts the main thermostat back to what the
+# Home Assistant schedule wants at that moment (or, without it, to what it was before).
+# If the schedule (or a person) changes the main thermostat meanwhile, it respects that new value.
+#
+# A room on Schedule with its own times fires the boiler by itself when its schedule wants heat
+# (e.g. only the bedroom warm at night).
+#
+# Optional: turn on "Rooms can call the boiler any time" (Manage page) and any valve below its target
+# fires the boiler, not only boosted ones (true multi-zone behaviour - more comfort, more gas).
+# These calls stop while the house is already 1 deg above its target, so one room can't overheat it.
+#
+# Gentle on Hive's servers: one change when the call starts, one when it ends.
+# Stands aside while "lower when nobody's home" is active and while Away / holiday mode is on.
+#
+# Good to know: while the boiler runs, every radiator WITHOUT a smart valve warms up too (that's how
+# a single-thermostat system works). Smart valves that are set low stay closed.
+#
+# Manual install - REPLACE:
+#   climate.hive_thermostat           -> your main thermostat (the one that switches the boiler)
+#   climate.bedroom_radiator / climate.study_radiator -> your radiator valves (in BOTH lists below)
+# Hive radiator valves: also add binary_sensor.<name>_state and binary_sensor.<name>_boost to the triggers.
+# Other valves (Sonoff, Tado, Aqara...): add their boost timer, timer.boost_<name>, to the triggers.
+
+input_boolean:
+  room_heat_call_active:
+    name: Room heat call active
+    icon: mdi:radiator
+  rooms_can_call_the_boiler_any_time:
+    name: Rooms can call the boiler any time
+    icon: mdi:radiator-disabled
+
+input_number:
+  room_heat_call_restore_temperature:
+    name: Room heat call restore temperature
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+  room_heat_call_set_temperature:
+    name: Room heat call set temperature
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+
+automation:
+  - id: hive_style_rooms_call_boiler
+    alias: Hive-style - rooms call the boiler
+    description: Boosted radiator valves (and rooms on their own schedule) fire the boiler through the main thermostat, then put it back to the schedule.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id:
+          - climate.bedroom_radiator
+          - binary_sensor.bedroom_radiator_state
+          - binary_sensor.bedroom_radiator_boost
+          - climate.study_radiator
+          - timer.boost_study_radiator
+          - input_boolean.rooms_can_call_the_boiler_any_time
+          - input_boolean.hive_away_eco_active
+          - input_boolean.heating_away_mode
+      - {trigger: state, entity_id: climate.hive_thermostat, attribute: temperature}
+      - {trigger: state, entity_id: climate.hive_thermostat, to: null}
+      - {trigger: time_pattern, minutes: "/2"}
+      - {trigger: homeassistant, event: start}
+    actions:
+      # Variables are in steps on purpose: each step only uses names from the steps before.
+      - variables:
+          main: climate.hive_thermostat
+          boost_temp: 21   # the Boost temperature your dashboard uses
+          rooms:
+            - climate.bedroom_radiator
+            - climate.study_radiator
+      - variables:
+          any_time: "{{ is_state('input_boolean.rooms_can_call_the_boiler_any_time', 'on') }}"
+          main_ok: >-
+            {{ states(main) in ['heat', 'auto']
+               and not is_state('input_boolean.hive_away_eco_active', 'on')
+               and not is_state('input_boolean.heating_away_mode', 'on') }}
+          T: "{{ state_attr(main, 'temperature') | float(0) }}"
+          C: "{{ state_attr(main, 'current_temperature') | float(0) }}"
+          active: "{{ is_state('input_boolean.room_heat_call_active', 'on') }}"
+          ours: "{{ states('input_number.room_heat_call_set_temperature') | float(0) }}"
+          saved: "{{ states('input_number.room_heat_call_restore_temperature') | float(0) }}"
+          # What the Home Assistant heating schedule wants right now (empty if it isn't in charge).
+          # A schedule slot that starts during a room call is never lost: the thermostat goes back to
+          # the schedule's CURRENT temperature when the call ends, not the one saved when it started.
+          sched: >-
+            {%- set ns = namespace(single=none, any=none, temp='') -%}
+            {%- if is_state('input_boolean.hive_ha_schedule', 'on') -%}
+            {%- set day = now().strftime('%a') | lower -%}{%- set t = now().strftime('%H:%M') -%}
+            {%- for s in states.switch | selectattr('attributes.tags', 'defined') | selectattr('attributes.tags', 'contains', 'hive_heating') | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) -%}
+              {%- set w = s.attributes.weekdays | default([]) -%}
+              {%- if day in w or 'daily' in w or ('workday' in w and day in ['mon','tue','wed','thu','fri']) or ('weekend' in w and day in ['sat','sun']) -%}
+                {%- if w | count == 1 and w[0] == day -%}{%- set ns.single = s -%}{%- else -%}{%- set ns.any = s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set sw = ns.single or ns.any -%}
+            {%- if sw -%}{%- for sl in sw.attributes.timeslots | default([]) -%}
+              {%- set a = sl.split(' - ') -%}{%- set stop = '24:00' if a[1] == '00:00' else a[1] -%}
+              {%- if a[0] <= t < stop -%}
+                {%- set acts = sw.attributes.actions | default([]) -%}
+                {%- set act = acts[loop.index0] if acts | count > 1 else acts[0] -%}
+                {%- set ns.temp = (act.data or act.service_data or {}).temperature -%}
+              {%- endif -%}
+            {%- endfor -%}{%- endif -%}
+            {%- endif -%}{{ ns.temp }}
+      - variables:
+          restore: "{{ sched | float if sched not in ['', none] else saved }}"
+      - variables:
+          calling: >-
+            {% set ns = namespace(c=[]) %}
+            {% for e in rooms %}{% set s = states[e] %}
+              {% if s is not none and s.state not in ['unavailable', 'unknown'] %}
+                {% set o = e.split('.')[1] %}
+                {% set d = states['binary_sensor.' ~ o ~ '_state'] %}
+                {% set cur = s.attributes.current_temperature | float(99) %}
+                {% set t = s.attributes.temperature | float(0) %}
+                {% set boosting = s.attributes.preset_mode == 'boost'
+                     or is_state('binary_sensor.' ~ o ~ '_boost', 'on')
+                     or is_state('timer.boost_' ~ o, 'active') %}
+                {% if d is not none %}
+                  {# Hive reports boost/demand late: a boosted room below the boost temperature needs heat #}
+                  {% set demand = d.state == 'on' or (boosting and cur < ([t, boost_temp] | max) - 0.3) %}
+                {% else %}
+                  {# 0.5 deg below target, so a small dip in one room doesn't fire the boiler #}
+                  {% set demand = s.state != 'off' and cur < t - 0.5 %}
+                {% endif %}
+                {# on Schedule, with its own times today #}
+                {% set ns2 = namespace(own=false) %}
+                {% if is_state('input_boolean.hive_room_schedule_' ~ o, 'on') %}
+                  {% set day = now().strftime('%a') | lower %}
+                  {% for sw in states.switch | selectattr('attributes.tags', 'defined') | selectattr('attributes.tags', 'contains', 'hive_room_' ~ o) | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) %}
+                    {% set w = sw.attributes.weekdays | default([]) %}
+                    {% if day in w or 'daily' in w or ('workday' in w and day in ['mon','tue','wed','thu','fri']) or ('weekend' in w and day in ['sat','sun']) %}{% set ns2.own = true %}{% endif %}
+                  {% endfor %}
+                {% endif %}
+                {% set own_sched = ns2.own %}
+                {# 'any time' / own-schedule calls only while the house is not already 1 deg above its target, so it never overheats the house; a boosted room always calls #}
+                {% if (boosting or ((any_time or own_sched) and C < restore + 1)) and demand %}{% set ns.c = ns.c + [e] %}{% endif %}
+              {% endif %}
+            {% endfor %}{{ ns.c }}
+          # Just enough to fire the boiler: 0.5 deg above the house target, or 1 deg above the thermostat reading
+          new_temp: "{{ [[restore + 0.5, ((C + 1) * 2) | round(0) / 2] | max, 30] | min }}"
+      - choose:
+          - alias: A room needs heat
+            conditions:
+              - condition: template
+                value_template: "{{ calling | count > 0 and main_ok }}"
+            sequence:
+              - if:
+                  - condition: template
+                    value_template: "{{ not active }}"
+                then:
+                  - action: input_number.set_value
+                    target: {entity_id: input_number.room_heat_call_restore_temperature}
+                    data: {value: "{{ T }}"}
+                  - action: input_number.set_value
+                    target: {entity_id: input_number.room_heat_call_set_temperature}
+                    data: {value: 0}
+                  - action: input_boolean.turn_on
+                    target: {entity_id: input_boolean.room_heat_call_active}
+                  - action: logbook.log
+                    data:
+                      name: Rooms call the boiler
+                      message: >-
+                        started for {{ calling | map('state_attr', 'friendly_name') | join(', ') }}
+                        (main thermostat was {{ T }}°)
+                      entity_id: input_boolean.room_heat_call_active
+                else:
+                  - if:
+                      - condition: template
+                        value_template: "{{ (T - ours) | abs > 0.1 }}"
+                    then:
+                      - action: input_number.set_value
+                        target: {entity_id: input_number.room_heat_call_restore_temperature}
+                        data: {value: "{{ T }}"}
+              - if:
+                  - condition: template
+                    value_template: "{{ T <= C + 0.2 and (T - new_temp) | abs > 0.1 }}"
+                then:
+                  - action: input_number.set_value
+                    target: {entity_id: input_number.room_heat_call_set_temperature}
+                    data: {value: "{{ new_temp }}"}
+                  - action: climate.set_temperature
+                    target: {entity_id: climate.hive_thermostat}
+                    data: {temperature: "{{ new_temp }}"}
+                    continue_on_error: true
+                  - wait_template: >-
+                      {{ (state_attr('climate.hive_thermostat', 'temperature') | float(0) - new_temp) | abs < 0.1 }}
+                    timeout: "00:01:30"
+                    continue_on_timeout: true
+          - alias: No room needs heat any more - put the main thermostat back
+            conditions:
+              - {condition: state, entity_id: input_boolean.room_heat_call_active, state: "on"}
+            sequence:
+              - variables:
+                  put_back: "{{ main_ok and ours > 0 and (T - ours) | abs < 0.1 }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ put_back }}"
+                then:
+                  - action: climate.set_temperature
+                    target: {entity_id: climate.hive_thermostat}
+                    data: {temperature: "{{ restore }}"}
+                    continue_on_error: true
+                  - wait_template: >-
+                      {{ (state_attr('climate.hive_thermostat', 'temperature') | float(0) - restore) | abs < 0.1 }}
+                    timeout: "00:01:30"
+                    continue_on_timeout: true
+              - action: input_boolean.turn_off
+                target: {entity_id: input_boolean.room_heat_call_active}
+              - action: logbook.log
+                data:
+                  name: Rooms call the boiler
+                  message: "finished, main thermostat {{ 'back to ' ~ restore if put_back else 'left at ' ~ T }}°"
+                  entity_id: input_boolean.room_heat_call_active
