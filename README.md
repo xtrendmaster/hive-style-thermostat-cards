@@ -162,6 +162,7 @@ The free electricity and Saving Session entities are off by default in the integ
 
 ## Changelog
 
+- **1.7.1**: Small fixes. The flame on a room is orange only while the boiler is really on (grey when the room wants heat but the boiler is off), rooms on Schedule never miss a schedule slot, and the heating goes back to the schedule's temperature when a boost ends. Press **Update** on the setup page after updating.
 - **1.7.0**: **Everything is free and set up for you.** The former add-ons are now part of the dashboard and installed by the setup page, with no YAML to edit:
   - **Radiators can turn the boiler on**: a boosted radiator (or a room on its own schedule) fires the boiler even when the heating is off on the schedule, then puts the thermostat back to the schedule. Optional *Rooms can call the boiler any time* switch on Manage.
   - **Rooms page with room photos**: every radiator as a photo card (the room's picture from Settings → Areas), with room temperature, humidity and Boost; the photo also sits behind each room's page. New **Rooms** button on the bottom menu.
