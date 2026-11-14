@@ -550,9 +550,8 @@ automation:
     alias: Hive-style - rooms on Schedule follow the heating schedule
     description: >-
       When the main heating schedule changes temperature, rooms on Schedule follow it. Also runs every
-      time something asks the main thermostat for a temperature (a schedule slot starting), even when
-      the thermostat is already at that temperature - e.g. while a room is calling the boiler - so a
-      schedule change is never missed.
+      time a heating schedule slot starts, even when the thermostat is already at that temperature -
+      e.g. while a room is calling the boiler - so a schedule change is never missed.
     mode: restart
     triggers:
       - trigger: state
@@ -561,18 +560,12 @@ automation:
       - trigger: state
         entity_id: input_boolean.hive_ha_schedule
         to: "on"
-      - alias: A schedule slot (or anything else) set the main thermostat, even to the same temperature
-        trigger: event
-        event_type: call_service
-        event_data:
-          domain: climate
-          service: set_temperature
-    conditions:
-      - condition: template
+      - alias: A heating schedule slot starts (even when the thermostat is already at that temperature)
+        trigger: template
         value_template: >-
-          {% if trigger.platform != 'event' %}true{% else %}
-          {%- set e = trigger.event.data.get('service_data', {}).get('entity_id', []) -%}
-          {{ 'climate.hive_thermostat' in (e if e is list else [e]) }}{% endif %}
+          {{ states.switch | selectattr('attributes.tags', 'defined')
+             | selectattr('attributes.tags', 'contains', 'hive_heating')
+             | selectattr('state', 'eq', 'triggered') | list | count > 0 }}
     actions:
       - delay: {seconds: 15}
       - action: script.hive_rooms_follow_schedule
@@ -597,6 +590,43 @@ automation:
           - action: script.hive_rooms_follow_schedule
             data:
               only: "climate.{{ trigger.event.data.entity_id.split('.')[1][6:] }}"
+  - id: hive_style_boost_end_back_to_schedule
+    alias: Hive-style - back to the schedule when a heating boost ends
+    description: >-
+      When the main thermostat's boost ends, put it on the temperature the Home Assistant schedule wants
+      now (not the one from before the boost), then let the rooms on Schedule follow.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.hive_thermostat_boost
+        from: "on"
+        to: "off"
+        for: {seconds: 30}
+      - trigger: event
+        event_type: timer.finished
+    conditions:
+      - alias: Only the main thermostat's own boost timer
+        condition: template
+        value_template: >-
+          {{ trigger.platform != 'event'
+             or trigger.event.data.entity_id == 'timer.boost_' ~ 'climate.hive_thermostat'.split('.')[1] }}
+      - condition: state
+        entity_id: input_boolean.hive_ha_schedule
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.heating_away_mode
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.hive_away_eco_active
+        state: "off"
+      - condition: state
+        entity_id: climate.hive_thermostat
+        state: heat
+    actions:
+      - delay: {seconds: 10}
+      - action: script.hive_apply_schedule_now
+      - delay: {seconds: 20}
+      - action: script.hive_rooms_follow_schedule
   - id: hive_style_presence_eco
     alias: Hive-style - lower the heating when nobody's home
     description: >-
